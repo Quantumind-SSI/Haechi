@@ -1,13 +1,31 @@
+// Haechi website origin server.
+//
+// Deployment shapes:
+//   local development     static files + file storage, same-origin form post
+//   Azure Container Apps  API origin backed by Azure Database for PostgreSQL,
+//                         serving cross-origin requests from Cloudflare Pages
+//
+// Storage is injected, so this module never branches on deployment target.
+// Every failure path denies the submission rather than dropping it silently.
+
 import { createServer } from "node:http";
-import { appendFile, chmod, mkdir, readFile, stat } from "node:fs/promises";
 import { createReadStream } from "node:fs";
+import { readFile, stat } from "node:fs/promises";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import {
+  RateLimitedError,
+  StorageUnavailableError,
+  createFileStorage,
+  createPostgresStorage,
+  openPostgresPool,
+} from "./storage.mjs";
 
 const siteRoot = dirname(fileURLToPath(import.meta.url));
 const defaultDataDir = join(siteRoot, "runtime");
 const maximumBodyBytes = 16 * 1024;
+const minimumSaltLength = 32;
 
 const contentTypes = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -29,12 +47,13 @@ const publicRoutes = new Map([
   ["/terms.html", "terms.html"],
 ]);
 
-const prohibitedRoots = new Set(["runtime", "tests"]);
+const prohibitedRoots = new Set(["runtime", "tests", "db", "node_modules"]);
 
-function applySecurityHeaders(response) {
+function applySecurityHeaders(response, connectSources) {
+  const connectSrc = ["'self'", ...connectSources].join(" ");
   response.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'",
+    `default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src ${connectSrc}; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'`,
   );
   response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
   response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
@@ -50,6 +69,7 @@ function applySecurityHeaders(response) {
 function json(response, statusCode, payload) {
   response.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
   });
   response.end(JSON.stringify(payload));
 }
@@ -74,7 +94,7 @@ async function parseJsonBody(request) {
   }
 }
 
-function cleanText(value, maximumLength) {
+export function cleanText(value, maximumLength) {
   if (typeof value !== "string") return "";
   return value
     .trim()
@@ -82,7 +102,7 @@ function cleanText(value, maximumLength) {
     .slice(0, maximumLength);
 }
 
-function validatePilotRequest(body) {
+export function validatePilotRequest(body) {
   const request = {
     organisation: cleanText(body.organisation, 120),
     workEmail: cleanText(body.workEmail, 180).toLowerCase(),
@@ -115,57 +135,193 @@ function validatePilotRequest(body) {
   return { request, errors };
 }
 
-function createRateLimiter({
-  maximum = 5,
-  windowMs = 60 * 60 * 1000,
-  maximumClients = 10_000,
-} = {}) {
-  const clients = new Map();
-
-  return function allow(key) {
-    const now = Date.now();
-    const existing = clients.get(key);
-    if (!existing || existing.resetAt <= now) {
-      if (!existing && clients.size >= maximumClients) {
-        for (const [client, limit] of clients) {
-          if (limit.resetAt <= now) clients.delete(client);
-        }
-        if (clients.size >= maximumClients) return false;
-      }
-      clients.set(key, { count: 1, resetAt: now + windowMs });
-      return true;
-    }
-    if (existing.count >= maximum) return false;
-    existing.count += 1;
-    return true;
-  };
+/** Keyed pseudonym for a client address. The raw address is never stored. */
+export function hashIp(ip, salt) {
+  return createHmac("sha256", salt).update(ip).digest("hex");
 }
 
-async function savePilotRequest(dataDir, request, metadata) {
-  await mkdir(dataDir, { recursive: true, mode: 0o700 });
-  const outputPath = join(dataDir, "pilot-requests.ndjson");
-  const record = {
-    id: `HCH-${randomUUID().slice(0, 8).toUpperCase()}`,
-    receivedAt: new Date().toISOString(),
-    ...request,
-    consent: undefined,
-    website: undefined,
-    metadata,
-  };
+/**
+ * Resolves the client address.
+ *
+ * X-Forwarded-For is only honoured when the deployment explicitly trusts its
+ * ingress. Trusting it unconditionally would let any caller forge the header
+ * and bypass rate limiting entirely.
+ */
+export function clientAddress(request, trustProxy) {
+  if (trustProxy) {
+    const forwarded = request.headers["x-forwarded-for"];
+    if (typeof forwarded === "string" && forwarded.length > 0) {
+      const first = forwarded.split(",")[0].trim();
+      if (first) return first;
+    }
+  }
+  return request.socket.remoteAddress || "unknown";
+}
 
-  await appendFile(outputPath, `${JSON.stringify(record)}\n`, {
-    encoding: "utf8",
-    mode: 0o600,
+function originAllowed(origin, allowedOrigins) {
+  if (typeof origin !== "string" || origin === "") return false;
+  const candidate = Buffer.from(origin);
+  return allowedOrigins.some((allowed) => {
+    const expected = Buffer.from(allowed);
+    return (
+      expected.length === candidate.length &&
+      timingSafeEqual(expected, candidate)
+    );
   });
-  await chmod(outputPath, 0o600);
-  return record.id;
+}
+
+function applyCorsHeaders(response, origin) {
+  response.setHeader("Access-Control-Allow-Origin", origin);
+  response.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  response.setHeader("Access-Control-Max-Age", "600");
+}
+
+/**
+ * Builds the HTTP server.
+ *
+ * @param {object} options
+ * @param {object} options.storage    storage adapter, defaults to file storage
+ * @param {string[]} options.allowedOrigins  origins permitted to post the form
+ * @param {string} options.ipSalt     HMAC key for client pseudonyms
+ * @param {boolean} options.trustProxy honour X-Forwarded-For from the ingress
+ */
+export function createHaechiServer(options = {}) {
+  const dataDir =
+    options.dataDir || process.env.HAECHI_SITE_DATA_DIR || defaultDataDir;
+  const storage = options.storage || createFileStorage({ dataDir });
+  const allowedOrigins = options.allowedOrigins || [];
+  const trustProxy = options.trustProxy === true;
+  const ipSalt = options.ipSalt || randomBytes(32).toString("hex");
+
+  if (ipSalt.length < minimumSaltLength) {
+    throw new Error(
+      `ipSalt must be at least ${minimumSaltLength} characters to pseudonymise client addresses`,
+    );
+  }
+
+  const server = createServer(async (request, response) => {
+    applySecurityHeaders(response, allowedOrigins);
+
+    const origin = request.headers.origin;
+    const corsPermitted = originAllowed(origin, allowedOrigins);
+    if (corsPermitted) {
+      response.setHeader("Vary", "Origin");
+      applyCorsHeaders(response, origin);
+    }
+
+    const requestUrl = new URL(request.url || "/", "http://localhost");
+
+    if (request.method === "OPTIONS") {
+      if (!corsPermitted) {
+        json(response, 403, { error: "Origin is not permitted." });
+        return;
+      }
+      response.writeHead(204);
+      response.end();
+      return;
+    }
+
+    if (request.method === "GET" && requestUrl.pathname === "/api/health") {
+      try {
+        await storage.ping();
+      } catch {
+        json(response, 503, {
+          status: "unavailable",
+          service: "haechi-website",
+        });
+        return;
+      }
+      json(response, 200, { status: "ok", service: "haechi-website" });
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/pilot") {
+      if (origin !== undefined && !corsPermitted) {
+        json(response, 403, { error: "Origin is not permitted." });
+        return;
+      }
+
+      const contentType = request.headers["content-type"] || "";
+      if (
+        contentType.split(";", 1)[0].trim().toLowerCase() !== "application/json"
+      ) {
+        json(response, 415, {
+          error: "Content-Type must be application/json.",
+        });
+        return;
+      }
+
+      try {
+        const body = await parseJsonBody(request);
+        const { request: pilotRequest, errors } = validatePilotRequest(body);
+        if (Object.keys(errors).length) {
+          json(response, 422, {
+            error: "Please correct the highlighted fields.",
+            fields: errors,
+          });
+          return;
+        }
+
+        const ipHash = hashIp(clientAddress(request, trustProxy), ipSalt);
+        const { reference } = await storage.save({
+          request: pilotRequest,
+          userAgent: cleanText(request.headers["user-agent"], 240),
+          ipHash,
+        });
+        json(response, 201, { ok: true, reference });
+      } catch (error) {
+        if (error instanceof RateLimitedError) {
+          json(response, 429, {
+            error: "Too many requests. Please try again later.",
+          });
+          return;
+        }
+        if (error instanceof StorageUnavailableError) {
+          json(response, 503, {
+            error:
+              "Submissions are temporarily unavailable. Please try again shortly.",
+          });
+          return;
+        }
+        json(response, error.statusCode || 500, {
+          error: error.statusCode
+            ? error.message
+            : "Unable to save the request.",
+        });
+      }
+      return;
+    }
+
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      json(response, 405, { error: "Method not allowed." });
+      return;
+    }
+
+    await serveStatic(requestUrl.pathname, response);
+  });
+
+  server.on("close", () => {
+    storage.close().catch(() => {});
+  });
+  return server;
 }
 
 async function serveStatic(requestPath, response) {
   const routeFile = publicRoutes.get(requestPath);
-  const relativePath =
-    routeFile ||
-    normalize(decodeURIComponent(requestPath)).replace(/^[/\\]+/, "");
+  let relativePath;
+  if (routeFile) {
+    relativePath = routeFile;
+  } else {
+    let decoded;
+    try {
+      decoded = decodeURIComponent(requestPath);
+    } catch {
+      json(response, 400, { error: "Malformed path." });
+      return;
+    }
+    relativePath = normalize(decoded).replace(/^[/\\]+/, "");
+  }
   const firstSegment = relativePath.split(/[\\/]/)[0];
 
   if (!relativePath || prohibitedRoots.has(firstSegment)) {
@@ -203,82 +359,77 @@ async function serveStatic(requestPath, response) {
   }
 }
 
-export function createHaechiServer(options = {}) {
-  const dataDir =
-    options.dataDir || process.env.HAECHI_SITE_DATA_DIR || defaultDataDir;
-  const allowRequest = createRateLimiter(options.rateLimit);
+/**
+ * Selects storage from the environment.
+ *
+ * HAECHI_DATABASE_URL selects PostgreSQL and makes the pseudonym key
+ * mandatory, because hashes are persisted and shared across instances. Without
+ * the variable the server uses local file storage for development.
+ */
+async function storageFromEnvironment() {
+  const connectionString = process.env.HAECHI_DATABASE_URL;
+  if (!connectionString) {
+    return {
+      storage: createFileStorage({
+        dataDir: process.env.HAECHI_SITE_DATA_DIR || defaultDataDir,
+      }),
+      requiresSalt: false,
+    };
+  }
+  const pool = await openPostgresPool({ connectionString });
+  return { storage: createPostgresStorage({ pool }), requiresSalt: true };
+}
 
-  return createServer(async (request, response) => {
-    applySecurityHeaders(response);
-    const requestUrl = new URL(request.url || "/", "http://localhost");
+function parseAllowedOrigins(value) {
+  if (typeof value !== "string" || value.trim() === "") return [];
+  return value
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin !== "");
+}
 
-    if (request.method === "GET" && requestUrl.pathname === "/api/health") {
-      json(response, 200, { status: "ok", service: "haechi-website" });
-      return;
-    }
+async function main() {
+  const port = Number.parseInt(process.env.HAECHI_SITE_PORT || "4173", 10);
+  const host = process.env.HAECHI_SITE_HOST || "127.0.0.1";
+  const { storage, requiresSalt } = await storageFromEnvironment();
+  const ipSalt = process.env.HAECHI_PILOT_IP_SALT;
 
-    if (request.method === "POST" && requestUrl.pathname === "/api/pilot") {
-      const contentType = request.headers["content-type"] || "";
-      if (
-        contentType.split(";", 1)[0].trim().toLowerCase() !== "application/json"
-      ) {
-        json(response, 415, {
-          error: "Content-Type must be application/json.",
-        });
-        return;
-      }
-      const clientAddress = request.socket.remoteAddress || "unknown";
-      if (!allowRequest(clientAddress)) {
-        json(response, 429, {
-          error: "Too many requests. Please try again later.",
-        });
-        return;
-      }
+  if (requiresSalt && (!ipSalt || ipSalt.length < minimumSaltLength)) {
+    throw new Error(
+      `HAECHI_PILOT_IP_SALT of at least ${minimumSaltLength} characters is required when HAECHI_DATABASE_URL is set`,
+    );
+  }
 
-      try {
-        const body = await parseJsonBody(request);
-        const { request: pilotRequest, errors } = validatePilotRequest(body);
-        if (Object.keys(errors).length) {
-          json(response, 422, {
-            error: "Please correct the highlighted fields.",
-            fields: errors,
-          });
-          return;
-        }
+  await storage.ping();
 
-        const reference = await savePilotRequest(dataDir, pilotRequest, {
-          userAgent: cleanText(request.headers["user-agent"], 240),
-        });
-        json(response, 201, { ok: true, reference });
-      } catch (error) {
-        json(response, error.statusCode || 500, {
-          error: error.statusCode
-            ? error.message
-            : "Unable to save the request.",
-        });
-      }
-      return;
-    }
-
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      json(response, 405, { error: "Method not allowed." });
-      return;
-    }
-
-    await serveStatic(requestUrl.pathname, response);
+  const server = createHaechiServer({
+    storage,
+    ipSalt,
+    allowedOrigins: parseAllowedOrigins(process.env.HAECHI_ALLOWED_ORIGINS),
+    trustProxy: process.env.HAECHI_TRUST_PROXY === "true",
   });
+
+  server.listen(port, host, () => {
+    process.stdout.write(
+      `Haechi website listening on http://${host}:${port} (storage: ${storage.kind})\n`,
+    );
+  });
+
+  // Container Apps sends SIGTERM before replacing a revision.
+  for (const signal of ["SIGTERM", "SIGINT"]) {
+    process.on(signal, () => {
+      server.close(() => process.exit(0));
+      setTimeout(() => process.exit(1), 10_000).unref();
+    });
+  }
 }
 
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  const port = Number.parseInt(process.env.HAECHI_SITE_PORT || "4173", 10);
-  const host = process.env.HAECHI_SITE_HOST || "127.0.0.1";
-  const server = createHaechiServer();
-  server.listen(port, host, () => {
-    process.stdout.write(
-      `Haechi website listening on http://${host}:${port}\n`,
-    );
+  main().catch((error) => {
+    process.stderr.write(`Haechi website failed to start: ${error.message}\n`);
+    process.exit(1);
   });
 }
