@@ -38,7 +38,13 @@ make audit
 npm --prefix website start
 ```
 
-Open `http://127.0.0.1:4173`.
+Open `http://127.0.0.1:4173`. Without a database configured the site uses local
+file storage, so no cloud resources are required.
+
+The website deploys as static assets on Cloudflare Pages with its API and data
+on Azure Container Apps in UK South. See
+[`dev-docs/operations/deployment.md`](dev-docs/operations/deployment.md) for the
+runbook and [`website/README.md`](website/README.md) for configuration.
 
 ## Run The Development Control API
 
