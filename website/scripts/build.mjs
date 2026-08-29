@@ -1,34 +1,38 @@
-import { copyFile, mkdir, readdir, stat, rm } from "node:fs/promises";
-import { join, relative } from "node:path";
+// Builds the self-contained Node origin bundle in dist/, which is what the
+// container image runs.
+//
+// Every listed file is required. A missing file fails the build rather than
+// producing a dist/ that starts and then crashes on first import.
+
+import { copyFile, mkdir, readdir, rm } from "node:fs/promises";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __dirname = join(fileURLToPath(import.meta.url), "..");
-const siteRoot = join(__dirname, "..");
+const siteRoot = join(fileURLToPath(import.meta.url), "..", "..");
 const distDir = join(siteRoot, "dist");
 
-const staticFiles = [
+const requiredFiles = [
   "index.html",
   "privacy.html",
   "terms.html",
   "styles.css",
   "app.js",
+  "config.js",
   "server.mjs",
+  "storage.mjs",
+  "migrate.mjs",
   "package.json",
 ];
 
-const assetDirs = ["assets"];
+const requiredDirs = ["assets", "db"];
 
 async function copyRecursive(src, dest) {
-  const entries = await readdir(src, { withFileTypes: true });
   await mkdir(dest, { recursive: true });
-  for (const entry of entries) {
-    const srcPath = join(src, entry.name);
-    const destPath = join(dest, entry.name);
-    if (entry.isDirectory()) {
-      await copyRecursive(srcPath, destPath);
-    } else {
-      await copyFile(srcPath, destPath);
-    }
+  for (const entry of await readdir(src, { withFileTypes: true })) {
+    const from = join(src, entry.name);
+    const to = join(dest, entry.name);
+    if (entry.isDirectory()) await copyRecursive(from, to);
+    else await copyFile(from, to);
   }
 }
 
@@ -38,36 +42,23 @@ async function build() {
   await rm(distDir, { recursive: true, force: true });
   await mkdir(distDir, { recursive: true });
 
-  for (const file of staticFiles) {
-    const src = join(siteRoot, file);
-    const dest = join(distDir, file);
-    try {
-      await copyFile(src, dest);
-      console.log(`  Copied ${file}`);
-    } catch (e) {
-      console.warn(`  Skipped ${file} (not found)`);
-    }
+  for (const file of requiredFiles) {
+    await copyFile(join(siteRoot, file), join(distDir, file));
+    console.log(`  copied ${file}`);
   }
 
-  for (const dir of assetDirs) {
-    const src = join(siteRoot, dir);
-    const dest = join(distDir, dir);
-    try {
-      await copyRecursive(src, dest);
-      console.log(`  Copied ${dir}/`);
-    } catch (e) {
-      console.warn(`  Skipped ${dir}/ (not found)`);
-    }
+  for (const dir of requiredDirs) {
+    await copyRecursive(join(siteRoot, dir), join(distDir, dir));
+    console.log(`  copied ${dir}/`);
   }
 
-  const runtimeDir = join(distDir, "runtime");
-  await mkdir(runtimeDir, { recursive: true, mode: 0o700 });
+  await mkdir(join(distDir, "runtime"), { recursive: true, mode: 0o700 });
 
   console.log(`\nBuild complete: ${distDir}`);
   console.log("Run with: node dist/server.mjs");
 }
 
-build().catch((e) => {
-  console.error("Build failed:", e);
+build().catch((error) => {
+  console.error("Build failed:", error.message);
   process.exit(1);
 });
