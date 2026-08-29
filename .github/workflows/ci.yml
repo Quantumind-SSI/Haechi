@@ -4,7 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    # Any base branch, not only main. Stacked pull requests target the branch
+    # beneath them, and a filter of [main] would leave every one of them
+    # ungated.
+    branches: ["**"]
   workflow_dispatch:
 
 permissions:
