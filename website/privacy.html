@@ -50,14 +50,20 @@
           an enterprise pilot. It must not be used for unrelated marketing
           without a separate lawful basis and notice.
         </p>
-        <h2>Storage</h2>
+        <h2>Storage and processors</h2>
         <p>
-          The local reference server writes submissions to a restricted
-          application data file. The Cloudflare Pages deployment stores
-          submissions in the configured D1 database. No automatic retention job
-          is currently configured, so public launch remains blocked until
-          Quantumind Ltd approves and implements a retention and deletion
-          schedule.
+          Pages are served by Cloudflare. Submitted information is sent to an
+          application operated by Quantumind Ltd on Microsoft Azure and is
+          stored in a managed PostgreSQL database in the Azure UK South region,
+          which is located in the United Kingdom. The database has no public
+          network endpoint and is encrypted in transit and at rest. Cloudflare
+          does not store your submission.
+        </p>
+        <p>
+          Cloudflare and Microsoft act as processors for Quantumind Ltd. A
+          retention and deletion schedule has not yet been approved, so no
+          automatic deletion runs today. Public launch remains blocked until
+          that schedule is approved and implemented.
         </p>
         <h2>Cookies and tracking</h2>
         <p>

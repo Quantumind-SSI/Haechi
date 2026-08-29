@@ -1,0 +1,83 @@
+name: Deploy Website to Cloudflare Pages
+
+# Publishes the static site to Cloudflare Pages.
+#
+# Cloudflare serves assets only. The pilot form posts to the Azure Container
+# Apps origin, so the build must be told that origin through HAECHI_API_BASE.
+# It is baked into config.js and into the connect-src directive of _headers,
+# which means deploying the wrong value breaks submissions in the browser
+# rather than failing silently.
+#
+# Required repository or environment secrets:
+#   CLOUDFLARE_API_TOKEN     token with Cloudflare Pages edit permission
+#   CLOUDFLARE_ACCOUNT_ID    target account
+#   HAECHI_API_BASE          https origin of the Azure API
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - prod
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-cloudflare-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and publish static site
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            website/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm --prefix website ci --ignore-scripts
+
+      - name: Build static output
+        env:
+          HAECHI_API_BASE: ${{ secrets.HAECHI_API_BASE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${HAECHI_API_BASE}" ]]; then
+            echo "HAECHI_API_BASE is required so the form can reach the Azure API" >&2
+            exit 1
+          fi
+          npm --prefix website run pages:build
+
+      - name: Confirm the API origin is present in the build
+        env:
+          HAECHI_API_BASE: ${{ secrets.HAECHI_API_BASE }}
+        run: |
+          set -euo pipefail
+          grep -q "${HAECHI_API_BASE}" website/public/config.js
+          grep -q "${HAECHI_API_BASE}" website/public/_headers
+          echo "config.js and _headers both reference the API origin"
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: website
+          command: pages deploy public --project-name=haechi-website
