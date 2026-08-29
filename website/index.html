@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Haechi is an enterprise secure communications platform designed for resilient networking, privacy-separated access and post-quantum transition."
+    />
+    <meta name="theme-color" content="#09090a" />
+    <title>Haechi | Communications that reveal less</title>
+    <link rel="icon" href="/assets/haechi-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header" data-header>
+      <div class="shell header-inner">
+        <a class="brand" href="#top" aria-label="Haechi home">
+          <img src="/assets/haechi-mark.svg" alt="" width="34" height="34" />
+          <span>HAECHI</span>
+        </a>
+
+        <button
+          class="menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="primary-navigation"
+          data-menu-toggle
+        >
+          <span class="sr-only">Toggle navigation</span>
+          <span></span><span></span>
+        </button>
+
+        <nav
+          id="primary-navigation"
+          class="primary-nav"
+          aria-label="Primary navigation"
+          data-navigation
+        >
+          <a href="#platform">Platform</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#assurance">Assurance</a>
+          <a href="#deployment">Deployment</a>
+          <a class="button button-small" href="#pilot">Request a pilot</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="hero-grid" aria-hidden="true"></div>
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="shell hero-layout">
+          <div class="hero-copy reveal">
+            <p class="eyebrow">
+              <span class="eyebrow-dot"></span> Secure communications for the
+              quantum era
+            </p>
+            <h1>Communications that <span>reveal less.</span></h1>
+            <p class="hero-lede">
+              Haechi is building an enterprise network platform that separates
+              identity from connection activity, reinforces tunnels for the
+              post-quantum transition and adapts safely to hostile networks.
+            </p>
+            <div class="hero-actions">
+              <a class="button" href="#pilot">Request an enterprise pilot</a>
+              <a class="text-link" href="#architecture"
+                >Explore the architecture <span aria-hidden="true">↘</span></a
+              >
+            </div>
+            <div class="hero-note">
+              <span class="signal" aria-hidden="true"></span>
+              <p>
+                <strong>Engineering preview.</strong> Advanced privacy and
+                adaptive-transport capabilities remain subject to independent
+                review and measured release gates.
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="shield-console reveal"
+            aria-label="Illustration of Haechi's protected connection layers"
+          >
+            <div class="console-topbar">
+              <span>Protected session</span>
+              <span class="console-live"><i></i> Policy verified</span>
+            </div>
+            <div class="shield-stage" aria-hidden="true">
+              <div class="orbit orbit-one"><i></i></div>
+              <div class="orbit orbit-two"><i></i></div>
+              <div class="shield-shape">
+                <img
+                  src="/assets/haechi-mark.svg"
+                  alt=""
+                  width="86"
+                  height="86"
+                />
+              </div>
+            </div>
+            <div class="session-path">
+              <div><span>Endpoint</span><strong>Device attested</strong></div>
+              <b aria-hidden="true"></b>
+              <div><span>Access</span><strong>Capability issued</strong></div>
+              <b aria-hidden="true"></b>
+              <div><span>Gateway</span><strong>LON · healthy</strong></div>
+            </div>
+            <div class="console-metrics">
+              <div>
+                <span>Identity at gateway</span><strong>Not retained</strong>
+              </div>
+              <div><span>Key posture</span><strong>PQ reinforced</strong></div>
+              <div>
+                <span>Transport</span><strong>Direct / adaptive</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="shell audience-strip reveal" aria-label="Designed for">
+          <span>Designed for</span>
+          <strong>Enterprise</strong>
+          <strong>Government contractors</strong>
+          <strong>Critical infrastructure</strong>
+          <strong>High-assurance teams</strong>
+        </div>
+      </section>
+
+      <section class="section threat-section" id="platform">
+        <div class="shell">
+          <div class="section-heading reveal">
+            <p class="eyebrow">The security gap</p>
+            <h2>Encryption alone does not hide the whole story.</h2>
+            <p>
+              Modern adversaries target long-lived cryptography, traffic
+              metadata and centralised identity systems. Haechi is designed
+              around all three pressure points.
+            </p>
+          </div>
+
+          <div class="threat-grid">
+            <article class="threat-card reveal">
+              <span class="card-index">01</span>
+              <div class="icon-frame" aria-hidden="true">
+                <span class="icon-quantum"></span>
+              </div>
+              <h3>Quantum transition</h3>
+              <p>
+                Long-duration sensitive data needs protection before
+                cryptographically relevant quantum systems arrive, not after an
+                attack can be detected.
+              </p>
+              <span class="card-label">Harvest-now risk</span>
+            </article>
+            <article class="threat-card reveal">
+              <span class="card-index">02</span>
+              <div class="icon-frame" aria-hidden="true">
+                <span class="icon-traffic"></span>
+              </div>
+              <h3>Metadata exposure</h3>
+              <p>
+                Timing, volume, routes and protocol fingerprints can reveal
+                structure and intent even when an attacker cannot read the
+                payload.
+              </p>
+              <span class="card-label">Traffic analysis</span>
+            </article>
+            <article class="threat-card reveal">
+              <span class="card-index">03</span>
+              <div class="icon-frame" aria-hidden="true">
+                <span class="icon-trust"></span>
+              </div>
+              <h3>Centralised trust</h3>
+              <p>
+                Identity-linked gateway sessions and broad provider logs create
+                high-value correlation points for compromise, coercion and
+                insider risk.
+              </p>
+              <span class="card-label">Correlation risk</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section pillars-section">
+        <div class="shell">
+          <div class="section-kicker reveal">
+            <span>One integrated platform</span>
+            <span>Three engineering pillars</span>
+          </div>
+          <div class="pillar-row reveal">
+            <div class="pillar-number">01</div>
+            <div>
+              <p class="eyebrow">Post-quantum transition</p>
+              <h3>Reinforce proven tunnels without a reckless rewrite.</h3>
+            </div>
+            <p>
+              WireGuard remains the dependable data plane while post-quantum key
+              exchange refreshes its pre-shared keys. Control-plane cryptography
+              follows standardised, interoperable algorithms with downgrade
+              protection.
+            </p>
+          </div>
+          <div class="pillar-row reveal">
+            <div class="pillar-number">02</div>
+            <div>
+              <p class="eyebrow">Privacy-separated access</p>
+              <h3>
+                Verify entitlement without handing identity to the gateway.
+              </h3>
+            </div>
+            <p>
+              Enterprise identity stays in the identity plane. Short-lived
+              connection capabilities are designed so regional gateways can
+              admit an authorised session without retaining a durable user
+              identity.
+            </p>
+          </div>
+          <div class="pillar-row reveal">
+            <div class="pillar-number">03</div>
+            <div>
+              <p class="eyebrow">Adaptive transport</p>
+              <h3>
+                Respond to network conditions inside strict policy bounds.
+              </h3>
+            </div>
+            <p>
+              Direct mode is the stable baseline. Approved protected transports,
+              bounded traffic shaping and signed route policies can be activated
+              when operating conditions require them.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section architecture-section" id="architecture">
+        <div class="shell">
+          <div class="section-heading split-heading reveal">
+            <div>
+              <p class="eyebrow">System architecture</p>
+              <h2>Five layers. Explicit trust boundaries.</h2>
+            </div>
+            <p>
+              Explore how a connection moves from enterprise identity to
+              protected egress without collapsing every responsibility into one
+              privileged service.
+            </p>
+          </div>
+
+          <div class="architecture-panel reveal">
+            <div
+              class="architecture-tabs"
+              role="tablist"
+              aria-label="Architecture layers"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="architecture-detail"
+                data-stage="endpoint"
+              >
+                <span>01</span> Endpoint
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="architecture-detail"
+                data-stage="capability"
+              >
+                <span>02</span> Access
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="architecture-detail"
+                data-stage="control"
+              >
+                <span>03</span> Control
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="architecture-detail"
+                data-stage="gateway"
+              >
+                <span>04</span> Gateway
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="architecture-detail"
+                data-stage="intelligence"
+              >
+                <span>05</span> Intelligence
+              </button>
+            </div>
+
+            <div
+              class="architecture-content"
+              id="architecture-detail"
+              role="tabpanel"
+              aria-live="polite"
+            >
+              <div>
+                <p class="eyebrow" data-architecture-label>
+                  Layer 01 · Endpoint
+                </p>
+                <h3 data-architecture-title>
+                  A policy-controlled agent on every device.
+                </h3>
+                <p data-architecture-copy>
+                  The Haechi agent coordinates device enrolment, WireGuard,
+                  post-quantum key reinforcement, DNS protection, kill-switch
+                  enforcement and signed updates behind native platform
+                  adapters.
+                </p>
+              </div>
+              <ul class="feature-list" data-architecture-points>
+                <li>Hardware-backed device keys where supported</li>
+                <li>Windows, macOS, Linux, Android and iOS</li>
+                <li>Fail-closed networking with rapid rollback</li>
+              </ul>
+              <div class="architecture-visual" aria-hidden="true">
+                <div class="layer-map">
+                  <span class="active">Endpoint</span><i></i><span>Access</span
+                  ><i></i><span>Control</span><i></i><span>Gateway</span><i></i
+                  ><span>GIM</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section foundations-section">
+        <div class="shell foundations-layout">
+          <div class="section-heading reveal">
+            <p class="eyebrow">Proven foundations</p>
+            <h2>Integrate what works. Own what differentiates.</h2>
+            <p>
+              Haechi assembles maintained open-source components through
+              controlled adapters, pinned dependencies and signed builds.
+              Product-specific orchestration and privacy behaviour remain
+              Haechi-owned.
+            </p>
+            <a
+              class="text-link"
+              href="https://github.com/QuantmindSSI/Haechi"
+              rel="noreferrer"
+              >View the origin repository <span aria-hidden="true">↗</span></a
+            >
+          </div>
+
+          <div class="foundation-list reveal">
+            <div>
+              <span>Network foundation</span
+              ><strong>NetBird · WireGuard</strong>
+            </div>
+            <div>
+              <span>PQ transition</span><strong>Rosenpass · OpenSSL</strong>
+            </div>
+            <div>
+              <span>Identity &amp; policy</span><strong>Keycloak · OPA</strong>
+            </div>
+            <div>
+              <span>Protected transport</span><strong>Xray adapter</strong>
+            </div>
+            <div>
+              <span>Operations</span><strong>OpenTelemetry · Prometheus</strong>
+            </div>
+            <div>
+              <span>Supply chain</span><strong>Trivy · Syft · Cosign</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section assurance-section" id="assurance">
+        <div class="shell">
+          <div class="section-heading split-heading reveal">
+            <div>
+              <p class="eyebrow">Assurance before adjectives</p>
+              <h2>Security claims should come with evidence.</h2>
+            </div>
+            <p>
+              Haechi’s release process treats measurable assurance as part of
+              the product, not a document created after development.
+            </p>
+          </div>
+
+          <div class="assurance-grid">
+            <article class="assurance-card reveal">
+              <span>01</span>
+              <h3>Independent review</h3>
+              <p>
+                External cryptographic design review, penetration testing and
+                resolution of production-blocking findings.
+              </p>
+            </article>
+            <article class="assurance-card reveal">
+              <span>02</span>
+              <h3>Minimal telemetry</h3>
+              <p>
+                No payload collection, durable user identifiers or raw DNS
+                activity in the Global Intelligence Mesh.
+              </p>
+            </article>
+            <article class="assurance-card reveal">
+              <span>03</span>
+              <h3>Signed supply chain</h3>
+              <p>
+                Pinned inputs, reproducible CI, software bills of materials and
+                verified signatures from build to deployment.
+              </p>
+            </article>
+            <article class="assurance-card reveal">
+              <span>04</span>
+              <h3>Controlled adaptation</h3>
+              <p>
+                Models and network policies are evaluated, versioned, signed,
+                constrained and reversible.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section deployment-section" id="deployment">
+        <div class="shell">
+          <div class="section-heading reveal">
+            <p class="eyebrow">Deployment flexibility</p>
+            <h2>One architecture, three operating models.</h2>
+          </div>
+          <div class="deployment-grid">
+            <article class="deployment-card reveal">
+              <p class="deployment-tag">Managed</p>
+              <h3>Multi-tenant SaaS</h3>
+              <p>
+                Regional service with tested tenant isolation, managed upgrades
+                and dedicated gateway pools where required.
+              </p>
+              <ul>
+                <li>Fastest route to pilot</li>
+                <li>Enterprise identity federation</li>
+                <li>Managed availability and updates</li>
+              </ul>
+            </article>
+            <article class="deployment-card featured reveal">
+              <p class="deployment-tag">Dedicated</p>
+              <h3>Enterprise &amp; CNI</h3>
+              <p>
+                A single-tenant control and data plane in a customer-approved
+                account or region, with customer-controlled keys.
+              </p>
+              <ul>
+                <li>Isolated infrastructure</li>
+                <li>Customer-managed trust roots</li>
+                <li>Contract-defined telemetry boundary</li>
+              </ul>
+            </article>
+            <article class="deployment-card reveal">
+              <p class="deployment-tag">Restricted</p>
+              <h3>Disconnected network</h3>
+              <p>
+                Self-contained operation with signed offline release, policy and
+                intelligence promotion workflows.
+              </p>
+              <ul>
+                <li>No public SaaS dependency</li>
+                <li>Offline update verification</li>
+                <li>Controlled export of health data</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section roadmap-section">
+        <div class="shell roadmap-layout">
+          <div class="section-heading reveal">
+            <p class="eyebrow">Delivery sequence</p>
+            <h2>A working product at every phase.</h2>
+            <p>
+              The direct enterprise network ships first. Advanced privacy
+              features move through isolated engineering and assurance gates
+              before they can affect production traffic.
+            </p>
+          </div>
+          <ol class="roadmap reveal">
+            <li>
+              <span>01</span>
+              <div>
+                <strong>Secure network foundation</strong>
+                <p>
+                  Managed WireGuard, gateway, endpoint agent and kill switch.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span>02</span>
+              <div>
+                <strong>Enterprise control</strong>
+                <p>
+                  Federated identity, policy, tenancy and dedicated deployment.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span>03</span>
+              <div>
+                <strong>Privacy &amp; PQ transition</strong>
+                <p>
+                  Unlinkable access prototype and post-quantum key
+                  reinforcement.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span>04</span>
+              <div>
+                <strong>Adaptive transport</strong>
+                <p>
+                  Protected-network adapters and bounded traffic-shaping
+                  profiles.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span>05</span>
+              <div>
+                <strong>Intelligence &amp; hardening</strong>
+                <p>
+                  Signed adaptive policy, red-team validation and production
+                  readiness.
+                </p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section pilot-section" id="pilot">
+        <div class="shell pilot-layout">
+          <div class="pilot-copy reveal">
+            <p class="eyebrow">Enterprise pilot</p>
+            <h2>Define the environment. Test the evidence.</h2>
+            <p>
+              Tell us what you need to protect, where it must run and which
+              assurance requirements matter. We’ll shape a controlled pilot
+              around a documented threat model.
+            </p>
+            <div class="pilot-points">
+              <div>
+                <span>01</span>
+                <p>
+                  <strong>Discovery</strong><br />Architecture and threat-model
+                  workshop.
+                </p>
+              </div>
+              <div>
+                <span>02</span>
+                <p>
+                  <strong>Deployment</strong><br />Bounded pilot in an approved
+                  environment.
+                </p>
+              </div>
+              <div>
+                <span>03</span>
+                <p>
+                  <strong>Evidence</strong><br />Measured results and an
+                  explicit risk register.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <form
+            class="pilot-form reveal"
+            action="/api/pilot"
+            method="post"
+            data-pilot-form
+            novalidate
+          >
+            <div class="form-header">
+              <span>Request a pilot</span>
+              <span>Commercial in confidence</span>
+            </div>
+            <div class="field">
+              <label for="organisation">Organisation</label>
+              <input
+                id="organisation"
+                name="organisation"
+                autocomplete="organization"
+                maxlength="120"
+                required
+              />
+              <small data-error-for="organisation"></small>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="workEmail">Work email</label>
+                <input
+                  id="workEmail"
+                  name="workEmail"
+                  type="email"
+                  autocomplete="email"
+                  maxlength="180"
+                  required
+                />
+                <small data-error-for="workEmail"></small>
+              </div>
+              <div class="field">
+                <label for="role">Role</label>
+                <input
+                  id="role"
+                  name="role"
+                  autocomplete="organization-title"
+                  maxlength="100"
+                />
+                <small data-error-for="role"></small>
+              </div>
+            </div>
+            <div class="field">
+              <label for="deployment">Preferred deployment</label>
+              <select id="deployment" name="deployment" required>
+                <option value="">Choose one</option>
+                <option value="saas">Managed SaaS</option>
+                <option value="dedicated">Dedicated enterprise / CNI</option>
+                <option value="restricted">Restricted or disconnected</option>
+                <option value="undecided">Not yet decided</option>
+              </select>
+              <small data-error-for="deployment"></small>
+            </div>
+            <div class="field">
+              <label for="message"
+                >What are you protecting? <span>Optional</span></label
+              >
+              <textarea
+                id="message"
+                name="message"
+                rows="4"
+                maxlength="1000"
+              ></textarea>
+            </div>
+            <div class="honeypot" aria-hidden="true">
+              <label for="website">Website</label>
+              <input
+                id="website"
+                name="website"
+                tabindex="-1"
+                autocomplete="off"
+              />
+            </div>
+            <label class="consent">
+              <input type="checkbox" name="consent" required />
+              <span
+                >I consent to Quantumind using these details to respond to this
+                request. See the <a href="/privacy">privacy notice</a>.</span
+              >
+            </label>
+            <small class="consent-error" data-error-for="consent"></small>
+            <button class="button submit-button" type="submit">
+              Submit pilot request <span aria-hidden="true">→</span>
+            </button>
+            <p
+              class="form-status"
+              role="status"
+              aria-live="polite"
+              data-form-status
+            ></p>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <a class="brand footer-brand" href="#top"
+            ><img
+              src="/assets/haechi-mark.svg"
+              alt=""
+              width="34"
+              height="34"
+            /><span>HAECHI</span></a
+          >
+          <p>Enterprise secure communications by Quantumind Ltd.</p>
+        </div>
+        <div class="footer-links">
+          <div>
+            <strong>Platform</strong><a href="#architecture">Architecture</a
+            ><a href="#assurance">Assurance</a
+            ><a href="#deployment">Deployment</a>
+          </div>
+          <div>
+            <strong>Company</strong><a href="#pilot">Enterprise pilot</a
+            ><a href="https://github.com/QuantmindSSI/Haechi" rel="noreferrer"
+              >GitHub</a
+            >
+          </div>
+          <div>
+            <strong>Legal</strong><a href="/privacy">Privacy</a
+            ><a href="/terms">Terms</a>
+          </div>
+        </div>
+      </div>
+      <div class="shell footer-bottom">
+        <span>© <span data-year>2026</span> Quantumind Ltd.</span>
+        <span>Built for verifiable assurance.</span>
+      </div>
+    </footer>
+  </body>
+</html>

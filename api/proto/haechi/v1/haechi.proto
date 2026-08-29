@@ -1,0 +1,132 @@
+// Haechi service-to-service contracts (Integration Document §7). Service APIs use
+// versioned Protocol Buffers over mutually-authenticated gRPC. This file is the
+// single source of truth for the wire types the Go services implement; the
+// hand-written Go structs in internal/model and the services mirror it.
+//
+// Compatibility tests run before any change here is merged (§7).
+syntax = "proto3";
+
+package haechi.v1;
+
+option go_package = "github.com/QuantmindSSI/haechi/api/gen/haechiv1;haechiv1";
+
+// ---- Enrolment (control-api) ------------------------------------------------
+
+// EnrollDevice registers a device public key and posture against a tenant.
+// Security: authenticated bootstrap, proof of key possession, one-time code.
+message EnrollDeviceRequest {
+  string enrollment_code = 1;         // single-use bootstrap code
+  bytes  device_public_key = 2;       // raw Ed25519 (32 bytes)
+  string platform = 3;                // linux|macos|windows|android|ios
+  string posture = 4;                 // coarse posture label
+  bytes  possession_proof = 5;        // Ed25519 over (challenge || device_public_key), ctx haechi/enrollment-challenge/v1
+}
+message EnrollDeviceResponse {
+  string device_id = 1;
+  string tenant_id = 2;
+}
+
+// ---- Access capability (entitlement + capability-issuer) --------------------
+
+message CapabilityAttributes {
+  string audience = 1;                // coarse gateway class, NEVER a destination
+  string service_class = 2;           // coarse tier
+  uint64 epoch = 3;                   // validity epoch
+}
+
+// IssueAccessCapability exchanges entitlement for a short-lived, unlinkable
+// gateway capability. Security: blind/unlinkable issuance, rate limit, bounded
+// scope, replay defence.
+message IssueAccessCapabilityRequest {
+  bytes  entitlement_grant = 1;       // signed entitlement grant (identity plane)
+  CapabilityAttributes attributes = 2;
+  bytes  blinded_token = 3;           // client-blinded token; issuer never sees the unblinded value
+}
+message IssueAccessCapabilityResponse {
+  string key_id = 1;                  // issuer key bound to attributes
+  bytes  blind_signature = 2;         // client unblinds into a presentable token
+}
+
+// ---- Route resolution (route-orchestrator) ----------------------------------
+
+message RouteGateway {
+  string gateway_id = 1;
+  string region = 2;
+  string endpoint = 3;
+  string wireguard_public_key = 4;
+  int32  priority = 5;
+  double score = 6;
+}
+
+// ResolveRoute returns eligible gateways and a signed route plan. Security: no
+// durable user identity; signed response; strict expiry.
+message ResolveRouteRequest {
+  string tenant_id = 1;
+  string audience = 2;
+  string service_class = 3;
+  string pq_requirement = 4;          // off|preferred|required
+}
+message ResolveRouteResponse {
+  bytes  signed_route_plan = 1;       // model.SignedRoutePlan (JSON), Ed25519 signed
+}
+
+// ---- Policy distribution (control-api) --------------------------------------
+
+// FetchPolicyBundle delivers endpoint policy, feature flags and transport
+// constraints. Security: versioned, signed, rollback-protected, cacheable.
+message FetchPolicyBundleRequest {
+  string tenant_id = 1;
+  uint64 have_version = 2;            // client's current version (for 304-style caching)
+}
+message FetchPolicyBundleResponse {
+  bytes  signed_policy_bundle = 1;    // model.SignedPolicyBundle (JSON), Ed25519 signed
+  bool   not_modified = 2;
+}
+
+// ---- Gateway health (gateway-controller -> control-api) ----------------------
+
+// PublishGatewayHealth publishes coarse capacity/protocol status. Security:
+// workload identity, schema validation, no client-level fields.
+message PublishGatewayHealthRequest {
+  string gateway_id = 1;
+  bool   healthy = 2;
+  double load = 3;                    // 0..1
+}
+message PublishGatewayHealthResponse {}
+
+// ---- Privacy event (endpoint -> gim boundary) --------------------------------
+
+// SubmitPrivacyEvent submits an allowlisted operational measurement. Security:
+// field minimisation, local redaction, batching, short retention. Only fields on
+// the telemetry allowlist are accepted; everything else is dropped at the boundary.
+message SubmitPrivacyEventRequest {
+  string gateway_id = 1;
+  string region = 2;
+  string service_class = 3;
+  string pq_mode = 4;                 // hybrid-pq|classical
+  string outcome = 5;                 // success|failure|reason-code
+  string latency_bucket = 6;
+  uint64 epoch = 7;
+  uint64 count = 8;
+}
+message SubmitPrivacyEventResponse {}
+
+// ---- Services ----------------------------------------------------------------
+
+service ControlApi {
+  rpc EnrollDevice(EnrollDeviceRequest) returns (EnrollDeviceResponse);
+  rpc FetchPolicyBundle(FetchPolicyBundleRequest) returns (FetchPolicyBundleResponse);
+  rpc PublishGatewayHealth(PublishGatewayHealthRequest) returns (PublishGatewayHealthResponse);
+}
+
+service CapabilityIssuer {
+  rpc IssueAccessCapability(IssueAccessCapabilityRequest) returns (IssueAccessCapabilityResponse);
+}
+
+service RouteOrchestrator {
+  rpc ResolveRoute(ResolveRouteRequest) returns (ResolveRouteResponse);
+}
+
+service Gim {
+  rpc SubmitPrivacyEvent(SubmitPrivacyEventRequest) returns (SubmitPrivacyEventResponse);
+}

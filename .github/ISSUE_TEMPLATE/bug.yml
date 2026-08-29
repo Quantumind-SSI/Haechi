@@ -1,0 +1,49 @@
+name: Defect report
+description: Report reproducible incorrect behavior
+title: "[Defect]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include secrets, tokens, personal data, or vulnerability details. Use the private process in SECURITY.md for security reports.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: State what happened and include sanitized logs when useful.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: State the expected result and the source of that expectation.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest deterministic sequence that reproduces the defect.
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Revision
+      description: Commit SHA or release identifier.
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Control plane
+        - Endpoint agent
+        - Gateway and capability path
+        - Website
+        - Deployment and CI
+        - Documentation and contracts
+    validations:
+      required: true

@@ -1,0 +1,12 @@
+.git
+.github
+.wrangler
+**/.wrangler
+**/node_modules
+**/dist
+**/runtime
+*.docx
+*.log
+*.pdf
+coverage.out
+website/.dev.vars

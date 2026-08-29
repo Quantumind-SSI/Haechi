@@ -1,0 +1,20 @@
+Copyright (c) 2026 Quantumind Ltd. All rights reserved.
+
+This software and its accompanying documentation are proprietary and
+confidential to Quantumind Ltd.
+
+No licence, express or implied, is granted by the publication of this
+repository. No person may copy, modify, merge, publish, distribute,
+sublicense, sell, or create derivative works from any part of this repository
+without prior written permission from Quantumind Ltd.
+
+Access to this repository does not transfer ownership of, or any right in, the
+software, documentation, trade marks, or brand assets it contains.
+
+Third-party components consumed by this project remain subject to their own
+licences. Those components are recorded, with their licences, in
+third_party/manifest.yaml.
+
+This notice states the default position that applies where no separate written
+agreement exists. It is a placeholder pending legal review and does not
+constitute legal advice.

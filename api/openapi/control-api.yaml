@@ -1,0 +1,209 @@
+openapi: 3.1.0
+info:
+  title: Haechi Control API (Administrative)
+  version: "1.0.0"
+  description: >
+    Tenant-scoped administration for the Haechi control plane (Integration
+    Document §6.2, §7). Administrative operations require a verified bearer
+    identity carrying the haechi:control-admin entitlement. Device enrollment
+    is authenticated by a single-use code and proof of key possession.
+servers:
+  - url: https://control.haechi.example/api/v1
+security:
+  - bearerAuth: []
+paths:
+  /tenants:
+    post:
+      operationId: createTenant
+      summary: Provision an enterprise tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateTenantRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tenant" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /tenants/{tenantId}/policy:
+    put:
+      operationId: setTenantPolicy
+      summary: Replace tenant policy (bumps the monotonic version)
+      parameters:
+        - { name: tenantId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TenantPolicy" }
+      responses:
+        "200": { description: Updated }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /tenants/{tenantId}/enrollment-codes:
+    post:
+      operationId: issueEnrollmentCode
+      summary: Mint a single-use device enrolment code
+      parameters:
+        - { name: tenantId, in: path, required: true, schema: { type: string } }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollmentCode" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /enroll:
+    post:
+      operationId: enrollDevice
+      summary: Enroll a device using proof of possession
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollRequest" }
+      responses:
+        "201":
+          description: Enrolled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollResponse" }
+        "403": { description: Invalid, expired, or consumed enrollment credential }
+  /devices/{deviceId}:
+    delete:
+      operationId: revokeDevice
+      summary: Revoke a device (fail-closed on subsequent authorisation)
+      parameters:
+        - { name: deviceId, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Revoked }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /gateways:
+    put:
+      operationId: registerGateway
+      summary: Register or update a data-plane gateway
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Gateway" }
+      responses:
+        "200": { description: Upserted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /gateway-health:
+    post:
+      operationId: publishGatewayHealth
+      summary: Update gateway health and coarse load
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GatewayHealth" }
+      responses:
+        "200": { description: Updated }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /policy-bundle:
+    get:
+      operationId: fetchPolicyBundle
+      summary: Fetch a signed endpoint policy bundle
+      parameters:
+        - { name: tenant, in: query, required: true, schema: { type: string, minLength: 1 } }
+      responses:
+        "200": { description: Signed policy bundle }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: Missing or invalid bearer identity
+    Forbidden:
+      description: The verified identity lacks the required entitlement
+  schemas:
+    CreateTenantRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string }
+        idp_issuer: { type: string, format: uri }
+    Tenant:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        idp_issuer: { type: string }
+        created_at: { type: string, format: date-time }
+    TenantPolicy:
+      type: object
+      description: Deny-by-default. Anything not listed is refused.
+      additionalProperties: false
+      required: [allowed_service_classes, allowed_transports, pq_requirement, kill_switch, dns]
+      properties:
+        allowed_service_classes: { type: array, items: { type: string } }
+        allowed_transports:
+          type: array
+          items: { type: string, enum: [direct, protected] }
+        pq_requirement: { type: string, enum: [off, preferred, required] }
+        kill_switch: { type: boolean }
+        dns: { type: array, items: { type: string } }
+    EnrollmentCode:
+      type: object
+      required: [code, challenge, expires_at]
+      properties:
+        code: { type: string }
+        challenge: { type: string, format: byte }
+        expires_at: { type: string, format: date-time }
+    EnrollRequest:
+      type: object
+      additionalProperties: false
+      required: [code, public_key, platform, proof]
+      properties:
+        code: { type: string }
+        public_key: { type: string, format: byte }
+        platform: { type: string }
+        posture: { type: string }
+        proof: { type: string, format: byte }
+    EnrollResponse:
+      type: object
+      required: [device_id, tenant_id]
+      properties:
+        device_id: { type: string }
+        tenant_id: { type: string }
+    Gateway:
+      type: object
+      additionalProperties: false
+      required: [id, tenant_id, audience, endpoint, wireguard_public_key]
+      properties:
+        id: { type: string }
+        tenant_id: { type: string }
+        region: { type: string }
+        audience: { type: string }
+        service_classes: { type: array, items: { type: string } }
+        endpoint: { type: string }
+        wireguard_public_key: { type: string }
+        pq_capable: { type: boolean }
+        healthy: { type: boolean }
+        load: { type: number, minimum: 0, maximum: 1 }
+        last_seen: { type: string, format: date-time }
+    GatewayHealth:
+      type: object
+      additionalProperties: false
+      required: [gateway_id, healthy, load]
+      properties:
+        gateway_id: { type: string }
+        healthy: { type: boolean }
+        load: { type: number, minimum: 0, maximum: 1 }

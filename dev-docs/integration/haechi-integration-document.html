@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Haechi Integration Document</title>
+  <style>
+    @page { size: A4; margin: 22mm 18mm 22mm 18mm; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; font-size: 10.5pt; line-height: 1.45; }
+    h1 { color: #000000; font-size: 25pt; margin: 0 0 8pt; }
+    h2 { color: #1a1a1a; font-size: 17pt; border-bottom: 2px solid #ff4500; padding-bottom: 4pt; margin-top: 24pt; }
+    h3 { color: #1a1a1a; font-size: 13pt; margin-top: 18pt; }
+    h4 { color: #333333; font-size: 11pt; margin-bottom: 4pt; }
+    p { margin: 5pt 0 9pt; }
+    ul, ol { margin-top: 4pt; margin-bottom: 10pt; }
+    li { margin-bottom: 4pt; }
+    table { border-collapse: collapse; width: 100%; margin: 10pt 0 16pt; font-size: 8.7pt; }
+    th { background: #1a1a1a; color: #ffffff; text-align: left; padding: 7pt; border: 1px solid #333333; }
+    td { vertical-align: top; padding: 6pt; border: 1px solid #bdbdbd; }
+    tr:nth-child(even) td { background: #f5f5f5; }
+    code, pre { font-family: Menlo, Consolas, monospace; }
+    pre { background: #111111; color: #ffffff; padding: 12pt; border-left: 5px solid #ff4500; font-size: 8.5pt; line-height: 1.35; white-space: pre-wrap; }
+    .cover { min-height: 700px; padding-top: 120px; }
+    .eyebrow { color: #ff4500; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; }
+    .subtitle { font-size: 16pt; color: #444444; margin-top: 2pt; }
+    .meta { margin-top: 70px; border-top: 1px solid #999999; padding-top: 14pt; }
+    .page-break { page-break-before: always; }
+    .callout { background: #f5f5f5; border-left: 5px solid #ff4500; padding: 10pt 12pt; margin: 12pt 0; }
+    .warning { background: #fff3ed; border-left: 5px solid #ff4500; padding: 10pt 12pt; margin: 12pt 0; }
+    .small { font-size: 8.5pt; color: #555555; }
+    .status { color: #a53000; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <div class="eyebrow">Quantumind Ltd · Commercial in Confidence</div>
+    <h1>Haechi Integration Document</h1>
+    <p class="subtitle">Enterprise Software Assembly, Integration and Delivery Blueprint</p>
+    <p><strong>Product:</strong> Haechi Secure Communications Platform</p>
+    <p><strong>Canonical repository:</strong> https://github.com/QuantmindSSI/Haechi</p>
+    <div class="meta">
+      <p><strong>Version:</strong> 1.0</p>
+      <p><strong>Date:</strong> 26 August 2026</p>
+      <p><strong>Owner:</strong> Haechi Software Engineering</p>
+      <p><strong>Purpose:</strong> Define how proven open-source building blocks are connected, extended, secured and operated as one fully working enterprise product.</p>
+    </div>
+  </section>
+
+  <section class="page-break">
+    <h2>1. Executive Summary</h2>
+    <p>Haechi will be developed as an integrated enterprise secure-communications platform, not as a collection of loosely connected security tools. The engineering strategy is to begin with mature, actively maintained open-source networking, identity, policy, cryptography, observability and deployment components, then add Haechi-owned services where the product requires differentiated behaviour.</p>
+    <p>The first production objective is a dependable, centrally managed WireGuard-based private network for desktop, mobile and server endpoints. Post-quantum key establishment, privacy-preserving access capabilities, optional censorship-resistant transports, adaptive traffic shaping and the Global Intelligence Mesh are added behind explicit interfaces and release gates. This preserves a working product at every phase and prevents experimental features from weakening the core tunnel.</p>
+    <div class="callout"><strong>Engineering position:</strong> upstream repositories provide building blocks; they do not by themselves establish that Haechi is anonymous, post-quantum secure, formally verified or suitable for classified use. Those claims require an explicit threat model, integration tests, independent cryptographic review, penetration testing, operational controls and evidence from deployment.</div>
+
+    <h3>1.1 Product outcome</h3>
+    <p>A fully working Haechi release allows an organisation to enrol users and devices, apply least-privilege access policy, establish secure tunnels, select direct or protected transport modes, rotate keys, monitor service health without collecting traffic content, operate gateways across regions, and update or roll back every component safely.</p>
+
+    <h3>1.2 What Haechi owns</h3>
+    <ul>
+      <li>The unified endpoint agent and user experience.</li>
+      <li>The control API, tenant model, device lifecycle and deployment workflows.</li>
+      <li>The privacy-capability issuer and gateway verifier that decouple identity from network sessions.</li>
+      <li>The route orchestrator, gateway scoring and signed policy-distribution system.</li>
+      <li>The traffic-shaping policy engine and safe on-device inference integration.</li>
+      <li>The privacy-preserving Global Intelligence Mesh and its model-governance process.</li>
+      <li>The hardened reference architecture, tests, supply-chain controls and product documentation.</li>
+    </ul>
+
+    <h2>2. Scope and Release Boundaries</h2>
+    <h3>2.1 In scope</h3>
+    <ul>
+      <li>Enterprise-managed encrypted networking for Windows, macOS, Linux, Android and iOS.</li>
+      <li>Multi-tenant SaaS, dedicated single-tenant and restricted-network deployment modes.</li>
+      <li>Organisation administration, device enrolment, policy, gateway and route management.</li>
+      <li>WireGuard-based tunnels with post-quantum pre-shared-key reinforcement.</li>
+      <li>Short-lived, unlinkable connection capabilities after enterprise entitlement verification.</li>
+      <li>Optional transport adapters for networks where ordinary VPN traffic is blocked.</li>
+      <li>Privacy-minimised operational telemetry, threat intelligence and signed adaptive policies.</li>
+      <li>Continuous delivery, security scanning, SBOM generation, signing and rollback.</li>
+    </ul>
+
+    <h3>2.2 Not assumed at project start</h3>
+    <ul>
+      <li>That changing encrypted packet payloads with a VAE is technically valid. Haechi shapes observable metadata—timing, padding, batching and cover connections—without corrupting authenticated ciphertext.</li>
+      <li>That traffic can be proven “statistically indistinguishable” without a defined adversary, dataset and reproducible evaluation.</li>
+      <li>That post-quantum security can be enabled only after detecting a “quantum signature.” Harvest-now-decrypt-later requires quantum-resistant protection before an attack is observable.</li>
+      <li>That a no-logs claim follows from policy alone. Gateway data flows, correlation paths, support tooling and telemetry must be designed and tested for unlinkability.</li>
+      <li>That Tor, I2P or an obfuscation proxy is suitable for every enterprise environment. These remain opt-in transport profiles with legal, performance and abuse controls.</li>
+    </ul>
+
+    <h2>3. Engineering Principles</h2>
+    <ol>
+      <li><strong>Working core first.</strong> A secure direct tunnel, identity, policy and operations plane must remain usable independently of experimental features.</li>
+      <li><strong>Adapters over deep forks.</strong> Integrate through stable APIs, libraries and sidecars. Fork an upstream project only when no supported extension point exists.</li>
+      <li><strong>Cryptography is never improvised.</strong> Use standardised algorithms and maintained implementations; require external review for Haechi protocol composition.</li>
+      <li><strong>Fail closed.</strong> Expired policy, invalid signatures, route ambiguity and credential-verification failure must deny access or fall back only to a pre-approved safe mode.</li>
+      <li><strong>Privacy by data minimisation.</strong> Gateways and analytics systems do not receive payloads or durable user identifiers.</li>
+      <li><strong>Reproducible supply chain.</strong> Pin releases or commits, build in controlled CI, produce an SBOM, sign artefacts and verify signatures at deployment.</li>
+      <li><strong>Evidence before claims.</strong> Product language must track measured capabilities, audit results and deployment scope.</li>
+    </ol>
+
+    <h2>4. Target Architecture</h2>
+    <pre>
+Enterprise Identity Provider
+          │
+          ▼
+Keycloak ──► Haechi Entitlement Service ──► Privacy Capability Issuer
+                                                   │ short-lived token
+                                                   ▼
+┌──────────────────────── Endpoint ──────────────────────────┐
+│ Haechi UI                                                   │
+│ Haechi Agent                                                │
+│  ├─ device enrolment and secure update                      │
+│  ├─ OPA policy client                                       │
+│  ├─ WireGuard platform adapter                              │
+│  ├─ Rosenpass key reinforcement                             │
+│  ├─ transport adapter: direct / protected                   │
+│  └─ traffic shaper + ONNX policy inference                  │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ encrypted tunnel
+                            ▼
+┌────────────────────── Regional Data Plane ──────────────────┐
+│ Gateway verifier ── WireGuard gateway ── controlled egress  │
+│ Optional Xray transport sidecar · DNS · rate/abuse controls │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ minimised operational signals
+                            ▼
+┌──────────────────────── Control Plane ──────────────────────┐
+│ NetBird-derived management/signalling/relay foundation      │
+│ Haechi Control API · OPA · route orchestrator · updater      │
+│ PostgreSQL · NATS · OpenBao · signed policy/config bundles   │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ privacy-filtered features
+                            ▼
+┌──────────────── Global Intelligence Mesh ───────────────────┐
+│ OpenTelemetry Collector · ClickHouse · model pipeline       │
+│ threat classification · route scoring · signed policies     │
+└─────────────────────────────────────────────────────────────┘</pre>
+
+    <h3>4.1 Trust zones</h3>
+    <table>
+      <tr><th>Zone</th><th>May know</th><th>Must not know or retain</th></tr>
+      <tr><td>Identity plane</td><td>Organisation, user identity, entitlement and device enrolment state.</td><td>Gateway session, browsing destination or network payload.</td></tr>
+      <tr><td>Capability issuer</td><td>That an authenticated, entitled subject is requesting a bounded capability.</td><td>The future gateway session to which the blinded capability will be presented.</td></tr>
+      <tr><td>Gateway/data plane</td><td>Valid capability, tunnel key, policy epoch and immediate network state.</td><td>Durable user identity, payment data or full identity-provider token.</td></tr>
+      <tr><td>GIM/analytics</td><td>Aggregated service health, coarse network conditions and privacy-reviewed features.</td><td>Payload, DNS query content, stable user identifiers or raw source addresses.</td></tr>
+      <tr><td>Administrator</td><td>Fleet posture, policy compliance and aggregate availability.</td><td>Individual browsing activity unless the customer deploys a separately governed enterprise security control.</td></tr>
+    </table>
+
+    <h2>5. Open-Source Building Blocks</h2>
+    <p>Each dependency must be pinned in <code>third_party/manifest.yaml</code> by version, commit or OCI digest. The security team verifies provenance, maintenance status, licence obligations, known vulnerabilities, cryptographic posture and upgrade path before promotion. The list below is the intended starting set, not an automatic approval list.</p>
+
+    <table>
+      <tr><th>Repository</th><th>Role in Haechi</th><th>Integration method</th><th>Release gate</th></tr>
+      <tr><td>github.com/netbirdio/netbird</td><td>Working WireGuard-based management, signalling, relay and client foundation.</td><td>Reuse supported services and client packages; place Haechi APIs and UX above them.</td><td>Architecture and licence review; pin a tested release.</td></tr>
+      <tr><td>github.com/WireGuard/wireguard-go</td><td>Portable WireGuard userspace implementation for desktop and constrained environments.</td><td>Platform adapter behind a Haechi tunnel interface.</td><td>Protocol regression, leak and reconnect tests.</td></tr>
+      <tr><td>github.com/WireGuard/wireguard-apple</td><td>Apple tunnel integration and WireGuardKit components.</td><td>Network Extension integration in the iOS/macOS client.</td><td>Apple entitlement, background and App Store review.</td></tr>
+      <tr><td>github.com/WireGuard/wireguard-android</td><td>Android tunnel implementation patterns and libraries.</td><td>Android VpnService adapter.</td><td>Battery, always-on VPN and lockdown-mode tests.</td></tr>
+      <tr><td>github.com/rosenpass/rosenpass</td><td>Post-quantum key exchange that refreshes WireGuard pre-shared keys.</td><td>Companion process/library controlled by the Haechi agent and gateway.</td><td>Independent cryptographic review and interoperability testing.</td></tr>
+      <tr><td>github.com/openssl/openssl</td><td>Standards-based TLS and supported post-quantum algorithms for control-plane services.</td><td>Use approved OpenSSL release through service runtime and ingress configuration.</td><td>Compatibility matrix; no silent downgrade.</td></tr>
+      <tr><td>github.com/XTLS/Xray-core</td><td>Optional protected transport for DPI-restricted networks.</td><td>Isolated local and gateway sidecars behind a transport interface; disabled by default.</td><td>Protocol, licence, jurisdiction, audit and abuse review.</td></tr>
+      <tr><td>github.com/keycloak/keycloak</td><td>Enterprise federation, OIDC/SAML, MFA and administrator authentication.</td><td>Identity plane only; gateway never receives the upstream identity token.</td><td>Hardened realm templates and tenant-isolation tests.</td></tr>
+      <tr><td>github.com/open-policy-agent/opa</td><td>Consistent authorisation policy for devices, administrators, routes and features.</td><td>Server-side decision service plus signed, reduced endpoint policy bundles.</td><td>Policy unit tests and deny-by-default behaviour.</td></tr>
+      <tr><td>github.com/cloudflare/circl</td><td>Reviewed Go cryptographic primitives for the privacy-capability prototype.</td><td>Library use only inside the Haechi issuer/verifier; protocol remains Haechi-owned.</td><td>Cryptographic design review, test vectors and third-party audit.</td></tr>
+      <tr><td>github.com/openbao/openbao</td><td>Secrets, certificate material and controlled signing-key operations.</td><td>Cluster service with workload identity; no secrets committed to Git.</td><td>Unseal, recovery, rotation and audit procedures.</td></tr>
+      <tr><td>github.com/postgres/postgres</td><td>Durable control-plane state, tenancy, device inventory and policy metadata.</td><td>Managed or operator-controlled PostgreSQL with row-level isolation where appropriate.</td><td>Backup, restore, migration and tenant-boundary tests.</td></tr>
+      <tr><td>github.com/nats-io/nats-server</td><td>Low-latency control events, gateway health and policy distribution.</td><td>Authenticated subjects with explicit schemas and bounded retention.</td><td>Replay, partition and duplicate-delivery tests.</td></tr>
+      <tr><td>github.com/open-telemetry/opentelemetry-collector</td><td>Standard operational metrics, traces and privacy filtering.</td><td>Collector pipeline with allowlisted fields and redaction processors.</td><td>Automated proof that prohibited fields are dropped.</td></tr>
+      <tr><td>github.com/ClickHouse/ClickHouse</td><td>High-volume, aggregate network-condition and service-health analytics.</td><td>Receives only privacy-reviewed events from the telemetry boundary.</td><td>Retention, aggregation and deletion controls.</td></tr>
+      <tr><td>github.com/prometheus/prometheus<br>github.com/grafana/grafana</td><td>Operational monitoring, SLO dashboards and alerting.</td><td>Internal operations plane with role-restricted access.</td><td>No user-level traffic activity in dashboards.</td></tr>
+      <tr><td>github.com/pytorch/pytorch<br>github.com/microsoft/onnxruntime<br>github.com/mlflow/mlflow</td><td>Offline model research, portable endpoint inference and model lifecycle.</td><td>Train offline, register evidence, export signed ONNX models, execute inside constrained client runtime.</td><td>Accuracy, privacy, resource, adversarial and rollback tests.</td></tr>
+      <tr><td>github.com/kubernetes/kubernetes<br>github.com/helm/helm<br>github.com/cert-manager/cert-manager</td><td>Repeatable service deployment, packaging and certificate automation.</td><td>Hardened charts and environment overlays.</td><td>Pod security, network policy, disaster recovery and upgrade tests.</td></tr>
+      <tr><td>github.com/argoproj/argo-cd<br>github.com/opentofu/opentofu</td><td>GitOps delivery and reproducible infrastructure.</td><td>Separate environment repositories and reviewed promotion workflows.</td><td>Two-person production approval and tested rollback.</td></tr>
+      <tr><td>github.com/aquasecurity/trivy<br>github.com/anchore/syft<br>github.com/sigstore/cosign</td><td>Vulnerability scanning, SBOM generation and artefact signing.</td><td>Mandatory CI and admission checks.</td><td>No unsigned artefact; no unapproved critical vulnerability.</td></tr>
+    </table>
+
+    <h2>6. Haechi-Owned Integration Components</h2>
+    <h3>6.1 Endpoint Agent</h3>
+    <p>The endpoint agent is the only component allowed to coordinate tunnel state on a user device. It exposes a stable local API to the UI and hides platform-specific networking behind adapters. Responsibilities include enrolment, device-key custody, capability acquisition, route activation, DNS configuration, kill-switch enforcement, protected-transport selection, signed configuration validation, telemetry minimisation and safe update/rollback.</p>
+
+    <h3>6.2 Control API</h3>
+    <p>The control API provides tenant-scoped administration for organisations, users, devices, gateways, routes, policies, releases and audit events. It uses Keycloak for administrator identity, OPA for authorisation decisions and PostgreSQL for durable state. Every mutating operation is idempotent and emits a versioned event.</p>
+
+    <h3>6.3 Privacy Capability Service</h3>
+    <p>This service separates enterprise identity from gateway admission. An authenticated user proves entitlement to an issuer; the endpoint obtains a blinded or otherwise unlinkable, short-lived capability; a gateway verifies the capability locally without calling the identity provider. Capabilities are audience-bound, policy-bound, epoch-limited, replay-resistant and deliberately coarse enough to prevent fingerprinting.</p>
+    <div class="warning"><strong>Security gate:</strong> this protocol is not production-ready until its privacy properties, issuer/verifier collusion assumptions, revocation design, replay protection and metadata leakage have been independently reviewed. Bulletproofs or any other primitive must not be adopted simply because a repository exists.</div>
+
+    <h3>6.4 Route Orchestrator</h3>
+    <p>The orchestrator selects eligible gateways from organisation policy, region, service health, jurisdiction rules, capability audience, latency and capacity. It returns a signed route plan rather than directly controlling endpoint traffic. The endpoint validates the plan, applies local policy and reports only a coarse success/failure result.</p>
+
+    <h3>6.5 Traffic-Shaping Engine</h3>
+    <p>Release 1 uses deterministic, bounded profiles for padding, pacing and batching. Later releases may use an ONNX model to select profile parameters from local network conditions. The model must never rewrite authenticated ciphertext, generate arbitrary third-party traffic, or create unbounded cover traffic. Any cover connection terminates at a Haechi-controlled endpoint and is constrained by bandwidth, cost and abuse policy.</p>
+
+    <h3>6.6 Global Intelligence Mesh</h3>
+    <p>The GIM converts privacy-reviewed operational observations into gateway scores, transport recommendations and traffic-shaping policy. Collection, model training and policy publication are separate security domains. A model cannot be deployed directly: it must pass an evaluation suite, receive an approval record, be signed, support rollback and declare the client versions with which it is compatible.</p>
+
+    <h2>7. Interfaces and Contracts</h2>
+    <table>
+      <tr><th>Interface</th><th>Purpose</th><th>Security requirements</th></tr>
+      <tr><td><code>EnrollDevice</code></td><td>Register device public keys and posture against an enterprise tenant.</td><td>Authenticated bootstrap, proof of key possession, one-time code, full audit.</td></tr>
+      <tr><td><code>IssueAccessCapability</code></td><td>Exchange current entitlement for a short-lived gateway capability.</td><td>Blind/unlinkable issuance, rate limit, bounded scope, replay defence.</td></tr>
+      <tr><td><code>ResolveRoute</code></td><td>Return eligible gateway/transport choices and a signed route plan.</td><td>No durable user identity; signed response; strict expiry.</td></tr>
+      <tr><td><code>FetchPolicyBundle</code></td><td>Deliver endpoint policy, feature flags and transport constraints.</td><td>Versioned, signed, rollback-protected and cacheable.</td></tr>
+      <tr><td><code>PublishGatewayHealth</code></td><td>Publish coarse gateway capacity and protocol status.</td><td>Workload identity, schema validation and no client-level fields.</td></tr>
+      <tr><td><code>SubmitPrivacyEvent</code></td><td>Submit an allowlisted operational measurement.</td><td>Field minimisation, local redaction, batching and short retention.</td></tr>
+    </table>
+    <p>Service-to-service APIs use versioned Protocol Buffers over mutually authenticated gRPC where practical. External administrative APIs use HTTPS and OpenAPI. Asynchronous events use versioned schemas over NATS. Compatibility tests run before any contract change is merged.</p>
+
+    <h2>8. Canonical Repository Structure</h2>
+    <pre>
+Haechi/
+├── README.md
+├── SECURITY.md
+├── CONTRIBUTING.md
+├── CODEOWNERS
+├── docs/
+│   ├── architecture/
+│   ├── threat-model/
+│   ├── adr/
+│   ├── operations/
+│   └── product-source-documents/
+├── apps/
+│   ├── desktop/
+│   ├── android/
+│   ├── apple/
+│   └── admin-console/
+├── agent/
+│   ├── core/
+│   ├── platform/
+│   ├── tunnel/
+│   ├── transport/
+│   └── shaping/
+├── services/
+│   ├── control-api/
+│   ├── entitlement/
+│   ├── capability-issuer/
+│   ├── capability-verifier/
+│   ├── route-orchestrator/
+│   ├── gateway-controller/
+│   └── gim/
+├── api/
+│   ├── proto/
+│   ├── openapi/
+│   └── events/
+├── deploy/
+│   ├── helm/
+│   ├── kubernetes/
+│   └── opentofu/
+├── tests/
+│   ├── integration/
+│   ├── interoperability/
+│   ├── privacy/
+│   ├── performance/
+│   └── adversarial/
+├── third_party/
+│   ├── manifest.yaml
+│   ├── patches/
+│   └── notices/
+└── .github/workflows/</pre>
+    <p>The repository contains Haechi integration code, configuration, tests and documentation. Large upstream projects are consumed through package managers, pinned OCI images or reviewed forks in the QuantmindSSI organisation. They are not copied wholesale into the monorepo. Every patch to upstream behaviour is documented in an Architecture Decision Record and kept small enough to rebase.</p>
+
+    <h2>9. End-to-End Connection Flow</h2>
+    <ol>
+      <li>An organisation administrator federates its identity provider through Keycloak and defines device, route and feature policy.</li>
+      <li>The user enrols a device. The endpoint creates a hardware-backed device key where the platform supports it and proves possession.</li>
+      <li>The agent authenticates to the identity plane and requests an access capability for a coarse service class—not a specific browsing destination.</li>
+      <li>The capability service checks entitlement and issues a short-lived unlinkable token. The identity-plane session ends before gateway connection.</li>
+      <li>The route orchestrator returns a signed list of eligible gateways and approved transport profiles.</li>
+      <li>The agent establishes Rosenpass key reinforcement, configures WireGuard, verifies gateway identity and activates the kill switch before protected traffic is accepted.</li>
+      <li>If direct transport fails and policy allows it, the agent activates an isolated protected-transport adapter and retries without weakening authentication.</li>
+      <li>The gateway verifies the capability locally, applies service and abuse limits, and forwards encrypted traffic through controlled egress.</li>
+      <li>The endpoint and gateway emit only allowlisted health events. The telemetry boundary strips prohibited fields before analytics.</li>
+      <li>The GIM may produce a new signed route or shaping policy. The endpoint validates version, signature, compatibility and local enterprise policy before activation.</li>
+    </ol>
+
+    <h2>10. Deployment Topologies</h2>
+    <h3>10.1 Multi-tenant SaaS</h3>
+    <p>Shared regional control-plane services with logical tenant isolation and separate gateway pools where required. Suitable for enterprise pilots and premium managed service. Tenant isolation is continuously tested and sensitive signing keys remain outside application pods.</p>
+
+    <h3>10.2 Dedicated enterprise or CNI</h3>
+    <p>Single-tenant control and data plane in a customer-approved region or account. Customer-managed keys and identity federation are supported. Operational telemetry can remain inside the customer boundary, with only aggregated health exported under contract.</p>
+
+    <h3>10.3 Restricted or disconnected environment</h3>
+    <p>No runtime dependency on public SaaS. Releases, trust bundles, revocation epochs and model/policy updates move through a signed offline promotion process. The platform must continue operating safely when external intelligence feeds are unavailable.</p>
+
+    <h2>11. Eighteen-Month Delivery Plan</h2>
+    <table>
+      <tr><th>Phase</th><th>Deliverables</th><th>Exit criteria</th></tr>
+      <tr><td><strong>0 — Foundation</strong><br>Weeks 1–4</td><td>Repository controls, threat-model workshop, architecture decisions, dependency manifest, CI, SBOM/signing, local development environment.</td><td>Protected main branch; reproducible build; signed “hello-world” release; approved dependency policy.</td></tr>
+      <tr><td><strong>1 — Working Secure Network</strong><br>Months 2–4</td><td>NetBird/WireGuard foundation, Linux and desktop agents, gateway, basic administration, device enrolment, DNS, kill switch and direct transport.</td><td>End-to-end tunnel on supported platforms; reconnect/leak tests pass; gateway failover demonstrated.</td></tr>
+      <tr><td><strong>2 — Enterprise Control</strong><br>Months 5–7</td><td>Keycloak federation, OPA policy, tenant isolation, audit, HA control plane, Android/iOS clients, dedicated deployment.</td><td>Two pilot tenants; policy and tenancy test suites pass; documented backup/restore and SLOs.</td></tr>
+      <tr><td><strong>3 — Privacy and PQ Transition</strong><br>Months 8–11</td><td>Rosenpass integration, control-plane PQ compatibility, capability issuer/verifier prototype, formal protocol specification and external review.</td><td>No silent cryptographic downgrade; cross-platform interop; privacy tests and audit findings resolved for pilot scope.</td></tr>
+      <tr><td><strong>4 — Adaptive Transport</strong><br>Months 12–14</td><td>Optional Xray adapter, deterministic shaping profiles, privacy telemetry boundary, route scoring and restricted-network test lab.</td><td>Fallback works under defined blocking scenarios; resource and bandwidth budgets met; no payload collection.</td></tr>
+      <tr><td><strong>5 — GIM and Production Hardening</strong><br>Months 15–18</td><td>Model pipeline, signed ONNX policy selection, regional rollout, red-team, independent penetration test, DR exercise, enterprise pilot evidence.</td><td>Production readiness review passed; rollback proven; no unresolved critical/high findings; claims mapped to evidence.</td></tr>
+    </table>
+
+    <h2>12. Verification and Acceptance Criteria</h2>
+    <h3>12.1 Functional</h3>
+    <ul>
+      <li>Administrators can create a tenant, federate identity, enrol/revoke devices and publish least-privilege network policy.</li>
+      <li>Clients can establish, maintain, roam and recover a tunnel across supported operating systems.</li>
+      <li>DNS and traffic do not leave the approved path while the kill switch is enabled.</li>
+      <li>A gateway can validate access without receiving a durable user identity.</li>
+      <li>Gateway and control-plane upgrades support canary, rollback and mixed-version compatibility.</li>
+    </ul>
+
+    <h3>12.2 Performance and reliability</h3>
+    <ul>
+      <li>Connection establishment p95 at or below 3 seconds under the reference environment.</li>
+      <li>Regional failover and network-roaming recovery p95 at or below 5 seconds.</li>
+      <li>Direct-mode median latency overhead below 10 ms within the reference region; throughput and battery budgets defined per platform.</li>
+      <li>Control-plane target of 99.9% availability for pilot and 99.95% before general availability.</li>
+      <li>Shaping and protected transports publish explicit latency, throughput and bandwidth-cost profiles rather than sharing direct-mode targets.</li>
+    </ul>
+
+    <h3>12.3 Security and privacy</h3>
+    <ul>
+      <li>No raw traffic payload, full DNS query or durable user identifier appears in the telemetry pipeline.</li>
+      <li>No secret is stored in source control, container image or client log.</li>
+      <li>No unsigned application, container, policy bundle or model reaches production.</li>
+      <li>All critical cryptographic paths have published test vectors, negative tests and independent review.</li>
+      <li>There are no unmitigated critical or high-severity findings at a production release gate.</li>
+      <li>Privacy assertions are tested against issuer/gateway log correlation, timing, replay, revocation and tenant-collusion scenarios.</li>
+    </ul>
+
+    <h2>13. Security, Compliance and Operational Controls</h2>
+    <ul>
+      <li><strong>Threat model:</strong> maintain assets, trust boundaries, adversaries, misuse cases, assumptions and residual risks as version-controlled documentation.</li>
+      <li><strong>Secure development:</strong> mandatory review, CODEOWNERS, signed commits/releases, secret scanning, SAST, dependency scanning, fuzzing and protocol interoperability tests.</li>
+      <li><strong>Key management:</strong> workload identity, short-lived credentials, hardware-backed or HSM-protected signing keys, documented rotation and break-glass recovery.</li>
+      <li><strong>Data protection:</strong> documented lawful basis, regional retention, subject-rights process, deletion validation and a DPIA before user telemetry is enabled.</li>
+      <li><strong>Incident response:</strong> severity model, on-call ownership, evidence-preserving logs, customer notification process and compromised-release revocation.</li>
+      <li><strong>Assurance:</strong> independent penetration test before production, cryptographic review before privacy/PQ claims, and mapped evidence for NCSC, ISO 27001 and customer requirements.</li>
+    </ul>
+
+    <h2>14. Dependency, Licence and Supply-Chain Policy</h2>
+    <ol>
+      <li>Record repository, exact version/commit, source hash, licence, maintainer status and responsible Haechi owner.</li>
+      <li>Prefer released, supported versions over arbitrary branches. Never build production from an unpinned <code>main</code> or <code>master</code>.</li>
+      <li>Review copyleft, network-copyleft, trademark, patent and notice obligations before code is linked, modified or redistributed.</li>
+      <li>Build in isolated CI with locked dependencies; generate SPDX or CycloneDX SBOMs.</li>
+      <li>Sign binaries, containers, mobile packages, policies and ML models; verify signatures before install or deploy.</li>
+      <li>Track upstream advisories and end-of-life dates. Every critical dependency has an upgrade owner and replacement plan.</li>
+      <li>Contribute suitable generic fixes upstream to minimise long-lived private forks.</li>
+    </ol>
+
+    <h2>15. Principal Risks and Mitigations</h2>
+    <table>
+      <tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr>
+      <tr><td>Deep upstream fork becomes unmaintainable.</td><td>Missed security fixes and delayed releases.</td><td>Adapter boundary, minimal patch set, upstream contributions and quarterly rebase test.</td></tr>
+      <tr><td>Privacy token remains linkable through metadata.</td><td>Core zero-knowledge claim fails.</td><td>Separate trust zones, blind issuance, coarse scopes, short epochs, independent privacy analysis and correlation testing.</td></tr>
+      <tr><td>PQ composition weakens a proven tunnel.</td><td>False assurance or connectivity failure.</td><td>Hybrid transition, Rosenpass isolation, downgrade prevention, test vectors, audit and staged rollout.</td></tr>
+      <tr><td>Traffic shaping harms reliability or is fingerprintable.</td><td>Poor user experience and weak evasion.</td><td>Deterministic baseline, bounded overhead, adversarial lab, per-network profiles and rapid disable switch.</td></tr>
+      <tr><td>GIM creates a surveillance dataset.</td><td>Privacy, legal and reputational harm.</td><td>Feature allowlist, endpoint aggregation, no payloads, short retention, privacy review and customer-controlled telemetry.</td></tr>
+      <tr><td>Optional anonymity transports attract misuse.</td><td>Gateway abuse and provider blocking.</td><td>Enterprise entitlement, bounded capabilities, egress controls, rate limits, complaint handling and isolated pools.</td></tr>
+      <tr><td>Open-source licence obligations conflict with distribution.</td><td>Legal exposure or forced redesign.</td><td>Legal review at pin, notices, component isolation and approved alternatives.</td></tr>
+    </table>
+
+    <h2>16. Definition of a Fully Working Haechi Release</h2>
+    <p>Haechi is considered fully working for its declared release scope only when all of the following are true:</p>
+    <ul>
+      <li>A new enterprise can be provisioned from infrastructure through identity federation without undocumented manual database changes.</li>
+      <li>Supported endpoints can enrol, connect, roam, fail over, disconnect and uninstall cleanly.</li>
+      <li>Policy is enforced consistently at administration, control, endpoint and gateway boundaries.</li>
+      <li>Identity and gateway session data are separated according to the documented trust model.</li>
+      <li>Cryptographic algorithms, negotiation and key rotation are observable to operators without exposing keys or user activity.</li>
+      <li>Monitoring detects service failure while respecting the telemetry prohibition list.</li>
+      <li>Backup, restore, incident response, key rotation, regional failover and release rollback have been exercised.</li>
+      <li>The shipped SBOM matches deployed artefacts and every artefact verifies against the release trust root.</li>
+      <li>Performance, platform, security, privacy and accessibility acceptance criteria pass in CI or a recorded release test.</li>
+      <li>Marketing and investment claims are traceable to test reports, audits or clearly labelled research objectives.</li>
+    </ul>
+
+    <h2>17. Immediate Engineering Actions</h2>
+    <ol>
+      <li>Establish the canonical repository structure, protected branches, CODEOWNERS, security policy and CI trust model.</li>
+      <li>Write Architecture Decision Records for NetBird adoption, WireGuard platform strategy, capability protocol, Rosenpass integration and protected transports.</li>
+      <li>Create <code>third_party/manifest.yaml</code> and complete technical/licence review for the Phase 1 dependencies.</li>
+      <li>Build one vertical slice: administrator creates a tenant, enrols a Linux device, assigns policy and connects through one Haechi gateway.</li>
+      <li>Add DNS leak, kill-switch, reconnect, key-rotation and gateway-failure tests before adding traffic obfuscation.</li>
+      <li>Engage an external cryptographer for the capability and PQ composition design before implementation is treated as production security.</li>
+      <li>Define the reference performance environment and publish baseline tunnel measurements.</li>
+      <li>Begin enterprise pilot discovery using the working direct-mode product while the advanced privacy features remain gated.</li>
+    </ol>
+
+    <h2>Appendix A — Relationship to Existing Haechi Documents</h2>
+    <p>This integration document operationalises the product concept described in the executive summary, technical plan, branding direction and website brief. The newer enterprise/CNI positioning and “Invisible Shield” visual system are treated as current. The earlier SMB/consumer website and blue/teal “Digital Guardian” direction require revision before implementation. Product naming should be standardised as <strong>Haechi</strong>, with <strong>Quantumind Ltd</strong> as the company; “Quantumind Sentinel” and “Q-Sentinel” should be retained only if formally approved as architecture or edition names.</p>
+
+    <h2>Appendix B — Mandatory Decision Records</h2>
+    <ul>
+      <li>ADR-001: Canonical product and component naming.</li>
+      <li>ADR-002: NetBird integration versus maintained QuantmindSSI fork.</li>
+      <li>ADR-003: Endpoint language, process boundary and privileged helper model.</li>
+      <li>ADR-004: Enterprise identity and privacy-capability trust model.</li>
+      <li>ADR-005: WireGuard post-quantum reinforcement and downgrade policy.</li>
+      <li>ADR-006: Direct and protected transport interface.</li>
+      <li>ADR-007: Telemetry prohibition list and GIM data contract.</li>
+      <li>ADR-008: SaaS, dedicated and disconnected deployment boundaries.</li>
+      <li>ADR-009: Dependency pinning, fork and upstream contribution policy.</li>
+      <li>ADR-010: Release evidence and permitted security claims.</li>
+    </ul>
+
+    <p class="small">End of document · Haechi Integration Document v1.0 · 26 August 2026</p>
+  </section>
+</body>
+</html>

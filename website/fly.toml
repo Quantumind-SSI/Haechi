@@ -1,0 +1,55 @@
+# fly.toml — Haechi marketing website (Fly.io)
+#
+# Deploy from the repo root:   fly deploy ./website
+# or from this directory:      fly deploy
+#
+# The build context is this `website/` directory, which is what the Dockerfile
+# expects (COPY package*.json / COPY . .). Keep this file inside website/.
+
+app = "haechi-website"          # must be globally unique on Fly; `fly launch` can rename
+primary_region = "lhr"          # London (Quantumind Ltd is UK/GDPR). Change if needed.
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  # Bind to all interfaces inside the machine; the server defaults to 127.0.0.1.
+  HAECHI_SITE_HOST = "0.0.0.0"
+  HAECHI_SITE_PORT = "4173"
+
+[http_service]
+  internal_port = 4173          # must match HAECHI_SITE_PORT
+  force_https = true            # redirect http -> https at the Fly edge
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1      # keep one machine warm for a marketing site
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+# Application-level health check hits the built-in JSON endpoint.
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+# ---------------------------------------------------------------------------
+# NOTE ON PILOT DATA PERSISTENCE
+# Pilot submissions are appended to <data dir>/pilot-requests.ndjson inside the
+# machine's filesystem, which is EPHEMERAL — data is lost on redeploy/restart.
+# This matches website/README.md, which requires replacing the file-backed
+# adapter with an approved CRM/encrypted store before public launch.
+# A Fly volume is intentionally NOT enabled here (the server runs as non-root,
+# and Fly volumes mount as root, which needs extra handling). Wire a real
+# datastore during core engineering instead.
+# ---------------------------------------------------------------------------

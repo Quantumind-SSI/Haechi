@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://haechi.dev/events/policy-published.v1.json",
+  "title": "haechi.policy.published.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tenant_id", "version", "epoch", "published_at"],
+  "properties": {
+    "tenant_id": { "type": "string" },
+    "bundle_id": { "type": "string" },
+    "version": { "type": "integer", "minimum": 1 },
+    "epoch": { "type": "integer", "minimum": 0 },
+    "published_at": { "type": "string", "format": "date-time" }
+  }
+}

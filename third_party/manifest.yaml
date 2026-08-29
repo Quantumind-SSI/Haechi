@@ -1,0 +1,200 @@
+# Haechi third-party dependency manifest
+#
+# Every upstream building block MUST be pinned here by version, commit or OCI
+# digest before it is promoted into a Haechi environment (Integration Document
+# §5, §14; Immediate Engineering Action #3).
+#
+# This manifest is the single source of truth consumed by supply-chain tooling
+# (Trivy/Syft/Cosign) and by deploy/ overlays. Nothing here is vendored into
+# the Go module; components are consumed as external services or pinned images.
+#
+# status values:
+#   approved   - technical + licence review complete, cleared for the phase
+#   review     - under evaluation, not cleared for production
+#   candidate  - identified but not yet reviewed
+#
+# gate: the release gate that must pass before the dependency is trusted.
+
+apiVersion: haechi.dev/supply-chain/v1
+metadata:
+  owner: Haechi Software Engineering
+  policy: "Prefer released, supported versions. Never build production from an unpinned main/master."
+  updated: "2026-08-27"
+
+dependencies:
+  # --- Phase 1: Working Secure Network ---
+  - repo: github.com/netbirdio/netbird
+    role: WireGuard-based management, signalling, relay and client foundation
+    version: v0.28.9
+    integration: external-service
+    phase: 1
+    status: review
+    owner: platform-team
+    licence: BSD-3-Clause
+    gate: "Architecture and licence review; pin a tested release."
+
+  - repo: github.com/WireGuard/wireguard-go
+    role: Portable WireGuard userspace for desktop and constrained environments
+    version: v0.0.0-20231211153847-12269c276173
+    integration: agent-adapter
+    phase: 1
+    status: review
+    owner: agent-team
+    licence: MIT
+    gate: "Protocol regression, leak and reconnect tests."
+
+  - repo: github.com/open-policy-agent/opa
+    role: Deny-by-default authorisation for devices, admins, routes and features
+    version: v0.70.0
+    integration: sidecar+bundle
+    phase: 1
+    status: review
+    owner: control-plane-team
+    licence: Apache-2.0
+    gate: "Policy unit tests and deny-by-default behaviour."
+
+  - repo: github.com/postgres/postgres
+    role: Durable control-plane state, tenancy, device inventory, policy metadata
+    version: "16.4"
+    integration: external-service
+    phase: 1
+    status: approved
+    owner: control-plane-team
+    licence: PostgreSQL
+    gate: "Backup, restore, migration and tenant-boundary tests."
+
+  - repo: github.com/nats-io/nats-server
+    role: Low-latency control events, gateway health and policy distribution
+    version: v2.10.20
+    integration: external-service
+    phase: 1
+    status: review
+    owner: control-plane-team
+    licence: Apache-2.0
+    gate: "Replay, partition and duplicate-delivery tests."
+
+  # --- Phase 2: Enterprise Control ---
+  - repo: github.com/keycloak/keycloak
+    role: Enterprise federation, OIDC/SAML, MFA, administrator authentication
+    version: "25.0.6"
+    integration: identity-plane
+    phase: 2
+    status: review
+    owner: identity-team
+    licence: Apache-2.0
+    gate: "Hardened realm templates and tenant-isolation tests."
+
+  - repo: github.com/openbao/openbao
+    role: Secrets, certificate material, controlled signing-key operations
+    version: v2.0.1
+    integration: external-service
+    phase: 2
+    status: review
+    owner: security-team
+    licence: MPL-2.0
+    gate: "Unseal, recovery, rotation and audit procedures."
+
+  # --- Phase 3: Privacy and PQ transition ---
+  - repo: github.com/rosenpass/rosenpass
+    role: Post-quantum key exchange refreshing WireGuard pre-shared keys
+    version: v0.2.2
+    integration: agent+gateway-companion
+    phase: 3
+    status: review
+    owner: crypto-team
+    licence: MIT-OR-Apache-2.0
+    gate: "Independent cryptographic review and interoperability testing."
+
+  - repo: github.com/cloudflare/circl
+    role: Reviewed Go primitives for privacy-capability research beyond RFC 9474
+    version: v1.4.0
+    integration: library
+    phase: 3
+    status: review
+    owner: crypto-team
+    licence: BSD-3-Clause
+    gate: "Cryptographic design review, test vectors and third-party audit."
+
+  - repo: github.com/openssl/openssl
+    role: Standards-based TLS and supported post-quantum algorithms
+    version: "3.3.2"
+    integration: runtime
+    phase: 3
+    status: approved
+    owner: security-team
+    licence: Apache-2.0
+    gate: "Compatibility matrix; no silent downgrade."
+
+  # --- Phase 4: Adaptive transport ---
+  - repo: github.com/XTLS/Xray-core
+    role: Optional protected transport for DPI-restricted networks (opt-in)
+    version: v1.8.23
+    integration: isolated-sidecar
+    phase: 4
+    status: review
+    owner: transport-team
+    licence: MPL-2.0
+    default: disabled
+    gate: "Protocol, licence, jurisdiction, audit and abuse review."
+
+  - repo: github.com/open-telemetry/opentelemetry-collector
+    role: Standard operational metrics/traces with privacy filtering
+    version: v0.109.0
+    integration: external-service
+    phase: 4
+    status: review
+    owner: observability-team
+    licence: Apache-2.0
+    gate: "Automated proof that prohibited fields are dropped."
+
+  # --- Phase 5: GIM and production hardening ---
+  - repo: github.com/ClickHouse/ClickHouse
+    role: Aggregate network-condition and service-health analytics
+    version: "24.8"
+    integration: external-service
+    phase: 5
+    status: candidate
+    owner: observability-team
+    licence: Apache-2.0
+    gate: "Retention, aggregation and deletion controls."
+
+  - repo: github.com/microsoft/onnxruntime
+    role: Portable endpoint inference for signed traffic-shaping policy models
+    version: v1.19.2
+    integration: agent-runtime
+    phase: 5
+    status: candidate
+    owner: ml-team
+    licence: MIT
+    gate: "Accuracy, privacy, resource, adversarial and rollback tests."
+
+  # --- Supply-chain toolchain (all phases) ---
+  - repo: github.com/aquasecurity/trivy
+    role: Vulnerability scanning in CI and at admission
+    version: v0.55.0
+    integration: ci
+    phase: 0
+    status: approved
+    owner: security-team
+    licence: Apache-2.0
+    gate: "No unapproved critical vulnerability."
+
+  - repo: github.com/anchore/syft
+    role: SBOM generation (SPDX / CycloneDX)
+    version: v1.11.0
+    integration: ci
+    phase: 0
+    status: approved
+    owner: security-team
+    licence: Apache-2.0
+    gate: "Shipped SBOM matches deployed artefacts."
+
+  - repo: github.com/sigstore/cosign
+    role: Artefact, policy and model signing/verification
+    version: v2.4.0
+    integration: ci+admission
+    phase: 0
+    status: approved
+    owner: security-team
+    licence: Apache-2.0
+    gate: "No unsigned artefact reaches production."

@@ -1,0 +1,22 @@
+# Cloudflare Pages configuration for the Haechi website.
+#
+# Build output (static assets) is produced by `npm run pages:build` into ./public
+# Functions in ./functions are compiled by Cloudflare automatically.
+
+name = "haechi-website"
+pages_build_output_dir = "public"
+compatibility_date = "2024-11-06"
+
+# --- D1 database binding (durable pilot-request storage) -------------------
+# Create it once, then paste the printed database_id below:
+#   npx wrangler d1 create haechi-pilot
+# For local dev the id is ignored (a local SQLite is used under .wrangler/).
+[[d1_databases]]
+binding = "PILOT_DB"
+database_name = "haechi-pilot"
+database_id = "d0bb27ed-4299-40ae-b0d8-be528e76924d"
+
+# --- Runtime variables -----------------------------------------------------
+# PILOT_IP_SALT keys the HMAC used for rate limiting and is required at runtime.
+# Configure it only as a secret: npx wrangler pages secret put PILOT_IP_SALT
+# PILOT_WEBHOOK_URL (optional) enables a fire-and-forget lead notification.

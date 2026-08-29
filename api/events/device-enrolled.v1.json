@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://haechi.dev/events/device-enrolled.v1.json",
+  "title": "haechi.device.enrolled.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["device_id", "tenant_id", "platform", "enrolled_at"],
+  "properties": {
+    "device_id": { "type": "string" },
+    "tenant_id": { "type": "string" },
+    "platform": { "type": "string", "enum": ["linux", "macos", "windows", "android", "ios"] },
+    "posture": { "type": "string" },
+    "enrolled_at": { "type": "string", "format": "date-time" }
+  }
+}

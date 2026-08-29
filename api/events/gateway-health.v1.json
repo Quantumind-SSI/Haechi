@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://haechi.dev/events/gateway-health.v1.json",
+  "title": "haechi.gateway.health.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gateway_id", "healthy", "observed_at"],
+  "properties": {
+    "gateway_id": { "type": "string" },
+    "region": { "type": "string" },
+    "healthy": { "type": "boolean" },
+    "load": { "type": "number", "minimum": 0, "maximum": 1 },
+    "observed_at": { "type": "string", "format": "date-time" }
+  }
+}

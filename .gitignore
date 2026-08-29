@@ -1,0 +1,16 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.wrangler/
+**/.wrangler/
+bin/
+coverage.out
+*.test
+*.log
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+runtime/
+**/runtime/
