@@ -3,7 +3,8 @@
 This directory is the single entry point for Haechi documentation. Every standalone document in the repository is stored here and indexed below. Documentation that must sit beside the code it describes stays in place and is linked from this index.
 
 Repository: <https://github.com/QuantmindSSI/Haechi>
-Maintainer: Quantumind Ltd
+Maintainer: Quantumind SSI
+Collaboration: Quantumind SSI and Haechi Internet Security Services
 Index updated: 2026-08-28
 
 ## How To Read This Set
