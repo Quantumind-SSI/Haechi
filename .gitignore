@@ -14,3 +14,7 @@ dist/
 **/dist/
 runtime/
 **/runtime/
+
+# Derived brand reference renders and text extracts.
+# Regenerate with the commands in dev-docs/brand/brand-specification.md
+brand-assets/
