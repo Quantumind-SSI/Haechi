@@ -43,12 +43,46 @@ param allowedOrigins string
 @description('Minimum number of running replicas. One keeps the API warm.')
 @minValue(0)
 @maxValue(5)
-param minReplicas int = 1
+param minReplicas int = environmentName == 'prod' ? 2 : 1
 
 @description('Maximum number of replicas.')
 @minValue(1)
 @maxValue(10)
 param maxReplicas int = 3
+
+// --- Durability -------------------------------------------------------------
+// Staging exists to be cheap and disposable. Production holds enterprise
+// contact details that cannot be re-collected if they are lost, so it pays for
+// geo-redundant backup and a longer recovery window.
+
+@description('Backup retention in days. Production keeps a longer window.')
+@minValue(7)
+@maxValue(35)
+param backupRetentionDays int = environmentName == 'prod' ? 35 : 14
+
+@description('Geo-redundant backup. Protects the data against loss of the region.')
+@allowed(['Enabled', 'Disabled'])
+param geoRedundantBackup string = environmentName == 'prod' ? 'Enabled' : 'Disabled'
+
+// Azure rejects high availability on the Burstable tier at deployment time with
+// HANotSupportedForBurstableSkuWithMoreInfo. Note that neither the capabilities
+// API nor `az deployment group validate` reports this: Standard_B1ms advertises
+// supportedHaMode [SameZone, ZoneRedundant] and validation passes. Only a real
+// deployment fails.
+//
+// Enabling HA therefore requires moving databaseSkuName and databaseTier to
+// GeneralPurpose, which is roughly an order of magnitude more expensive. That
+// is a cost decision, so it is left explicit rather than defaulted on.
+@description('Database high availability. Requires GeneralPurpose or MemoryOptimized; Burstable rejects it.')
+@allowed(['Disabled', 'SameZone', 'ZoneRedundant'])
+param databaseHighAvailability string = 'Disabled'
+
+@description('Database compute size. Burstable is adequate for the current request rate.')
+param databaseSkuName string = 'Standard_B1ms'
+
+@description('Database tier matching databaseSkuName.')
+@allowed(['Burstable', 'GeneralPurpose', 'MemoryOptimized'])
+param databaseTier string = 'Burstable'
 
 var suffix = uniqueString(resourceGroup().id, environmentName)
 var namePrefix = 'haechi-${environmentName}'
@@ -176,8 +210,8 @@ resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
   name: '${namePrefix}-postgres'
   location: location
   sku: {
-    name: 'Standard_B1ms'
-    tier: 'Burstable'
+    name: databaseSkuName
+    tier: databaseTier
   }
   properties: {
     version: '16'
@@ -188,11 +222,11 @@ resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
       autoGrow: 'Enabled'
     }
     backup: {
-      backupRetentionDays: 14
-      geoRedundantBackup: 'Disabled'
+      backupRetentionDays: backupRetentionDays
+      geoRedundantBackup: geoRedundantBackup
     }
     highAvailability: {
-      mode: 'Disabled'
+      mode: databaseHighAvailability
     }
     network: {
       // No public endpoint. Reachable only from the delegated subnet.
