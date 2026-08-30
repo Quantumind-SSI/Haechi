@@ -26,6 +26,7 @@ The controlling statement of what actually works is [`engineering/readiness.md`]
 | [`architecture/overview.md`](architecture/overview.md)                                     | Authoritative | Ports and adapters map, trust zones, upstream integration table                 |
 | [`threat-model/telemetry-prohibition-list.md`](threat-model/telemetry-prohibition-list.md) | Authoritative | Fields that must never cross the telemetry boundary, enforced by `services/gim` |
 | [`adr/README.md`](adr/README.md)                                                           | Authoritative | Architecture decision register                                                  |
+| [`operations/deployment.md`](operations/deployment.md)                                     | Authoritative | Website deployment runbook for Cloudflare Pages and Azure Container Apps        |
 
 ### Architecture Decision Records
 
@@ -103,7 +104,7 @@ The following documents stay next to the artifacts they describe, because separa
 | Change to implementation status or release blockers                                                          | `engineering/readiness.md`                                  |
 | Change to what telemetry may cross the privacy boundary                                                      | `threat-model/telemetry-prohibition-list.md`                |
 | Component, port, or adapter change                                                                           | `architecture/overview.md`                                  |
-| Runbook, deployment, or incident procedure                                                                   | `operations/`, to be created with the first runbook         |
+| Runbook, deployment, or incident procedure                                                                   | `operations/`                                               |
 | API or event contract                                                                                        | Alongside the contract in `../api/`, linked from this index |
 
 Update this index in the same change that adds or removes a document.
