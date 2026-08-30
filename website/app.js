@@ -36,7 +36,7 @@ const architecture = {
   endpoint: {
     label: "Layer 01 · Endpoint",
     title: "A policy-controlled agent on every device.",
-    copy: "The Haechi agent coordinates device enrolment, WireGuard, post-quantum key reinforcement, DNS protection, kill-switch enforcement and signed updates behind native platform adapters.",
+    copy: "The Haechi agent is the only component that coordinates tunnel state on a device. It sequences enrolment, key reinforcement, DNS protection, kill-switch enforcement and signed updates behind native platform adapters, holding no ambient privilege of its own.",
     points: [
       "Hardware-backed device keys where supported",
       "Windows, macOS, Linux, Android and iOS",
@@ -58,17 +58,17 @@ const architecture = {
     title: "One governed source of configuration truth.",
     copy: "Haechi’s control plane manages tenancy, device state, policy, gateway inventory and signed route plans while keeping identity responsibilities separate from connection admission.",
     points: [
-      "Keycloak federation and OPA policy decisions",
-      "Versioned service contracts and signed bundles",
+      "Federated enterprise identity and deny-by-default authorisation",
+      "Versioned service contracts and signed policy bundles",
       "High-availability state and auditable change control",
     ],
   },
   gateway: {
     label: "Layer 04 · Regional data plane",
     title: "Fast encrypted transit with minimal knowledge.",
-    copy: "Regional gateways verify scoped capabilities, establish reinforced WireGuard tunnels and apply controlled egress policy without receiving the user’s full identity-provider session.",
+    copy: "Regional gateways verify a scoped capability locally, establish a reinforced encrypted tunnel and apply controlled egress policy. They never receive the user’s identity-provider session, so a compromised gateway cannot reconstruct who its traffic belongs to.",
     points: [
-      "WireGuard data plane with Rosenpass reinforcement",
+      "Admission decided at the gateway with no identity call",
       "Direct mode and isolated protected transports",
       "Capacity, abuse and regional policy controls",
     ],
