@@ -36,10 +36,50 @@ GET  /accounts/{account}/email/routing/addresses  403
 POST /zones/{zone}/email/routing/enable     403
 ```
 
-The MX hostnames are also not guessable. Cloudflare assigns them per zone, and
-`/email/routing/dns` is the endpoint that reveals them. Publishing an incorrect
-MX record does not fail loudly; it silently loses inbound mail. So the records
-are created by Cloudflare during enablement rather than written by hand.
+## The MX records
+
+An earlier revision of this document claimed the MX hostnames were assigned per
+zone and could not be determined without the API. That was wrong. Two other
+zones in the same account already run Email Routing, and both use the same
+hosts:
+
+```
+lummenna.com        9 route1.mx.cloudflare.net
+                   42 route2.mx.cloudflare.net
+                   88 route3.mx.cloudflare.net
+
+quantumindssi.com  29 route1.mx.cloudflare.net
+                   31 route2.mx.cloudflare.net
+                   12 route3.mx.cloudflare.net
+```
+
+The hostnames are constant. Only the priorities differ per zone, and because
+all three are equivalent Cloudflare endpoints the values do not affect
+delivery.
+
+So `haechi.co.uk` needs `route1`, `route2` and `route3.mx.cloudflare.net`.
+
+### Why these are still not written by hand
+
+Not because they are unknown, and not because doing so would break delivery.
+Mail already fails today: with no MX, senders fall back to the A record per
+RFC 5321 section 5.1, that address does not answer on port 25, and the message
+times out and bounces. Adding MX without enabling routing would instead produce
+a fast rejection from Cloudflare. Both outcomes are a bounce, and the fast one
+is arguably clearer for the sender.
+
+The actual reasons are narrower:
+
+1. **No benefit.** MX records alone deliver nothing. Cloudflare accepts mail
+   for a zone only when Email Routing is enabled on it, so the records do not
+   become useful until the step that also creates them.
+2. **Cloudflare owns these records.** Enablement writes them itself. Hand-written
+   copies can drift, duplicate, or conflict with what the setup flow expects.
+3. **A false signal.** DNS-based monitoring and security reviews would report
+   the domain as accepting mail while nothing can receive it.
+
+None of these is an emergency. They are reasons to sequence the work correctly,
+not reasons to treat a hand-written MX record as dangerous.
 
 ## Applying it
 
