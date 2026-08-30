@@ -7,13 +7,14 @@
   "scripts": {
     "start": "node server.mjs",
     "dev": "node --watch server.mjs",
-    "test": "node --test --test-timeout=60000 && node tests/smoke.mjs",
+    "test": "node scripts/check-brand-palette.mjs && node --test --test-timeout=60000 && node tests/smoke.mjs",
     "migrate": "node migrate.mjs",
     "build": "node scripts/build.mjs",
     "preview": "node server.mjs --prod",
     "pages:build": "node scripts/pages-build.mjs",
     "pages:dev": "wrangler pages dev public",
-    "pages:deploy": "wrangler pages deploy public"
+    "pages:deploy": "wrangler pages deploy public",
+    "check:brand": "node scripts/check-brand-palette.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -74,13 +74,15 @@ These documents are retained for historical and internal context. They must not 
 
 ## Brand Documentation
 
-| Document                                                                                                                                 | Authority                     | Purpose                                                                                                                |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| [`brand/haechi-brand-designer-guidelines.pdf`](brand/haechi-brand-designer-guidelines.pdf)                                               | Authoritative for design work | Brand identity guidelines                                                                                              |
-| [`brand/haechi-product-branding-and-creative-direction.pdf`](brand/haechi-product-branding-and-creative-direction.pdf)                   | Authoritative for design work | Product branding and creative direction                                                                                |
-| [`brand/haechi-product-branding-and-creative-direction-document.pdf`](brand/haechi-product-branding-and-creative-direction-document.pdf) | Superseded candidate          | Shorter, earlier variant of the creative direction document. Retained pending confirmation of which version is current |
+| Document                                                                                                                                 | Authority             | Purpose                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------ |
+| [`brand/brand-specification.md`](brand/brand-specification.md)                                                                           | Authoritative         | Palette, typography, logo rules and voice. The single source of truth          |
+| [`brand/haechi-brand-designer-guidelines.pdf`](brand/haechi-brand-designer-guidelines.pdf)                                               | Superseded 2026-08-30 | Original guidelines. Palette withdrawn in favour of the shipped implementation |
+| [`brand/haechi-product-branding-and-creative-direction.pdf`](brand/haechi-product-branding-and-creative-direction.pdf)                   | Superseded 2026-08-30 | Creative direction. Teal removed, purple and navy retained as reserved         |
+| [`brand/haechi-product-branding-and-creative-direction-document.pdf`](brand/haechi-product-branding-and-creative-direction-document.pdf) | Superseded 2026-08-30 | Shorter variant of the above                                                   |
 
-Marketing and design owners should confirm which creative direction document is current and mark the other as superseded.
+The three PDFs disagreed with each other and with the shipped product. They are
+retained for history only. Work from `brand-specification.md`.
 
 ## Documentation Held Beside Its Code
 
