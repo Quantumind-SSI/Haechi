@@ -1,13 +1,17 @@
-Copyright (c) 2026 Quantumind Ltd. All rights reserved.
+Copyright (c) 2026 Quantumind SSI and Haechi Internet Security Services.
+All rights reserved.
+
+Haechi is a collaborative product of Quantumind SSI and Haechi Internet
+Security Services. Development is currently carried out under Quantumind SSI.
 
 This software and its accompanying documentation are proprietary and
-confidential to Quantumind Ltd.
+confidential to the copyright holders named above.
 
 No licence, express or implied, is granted by the publication of this
 repository. No person may copy, modify, merge, publish, distribute,
 sublicense, sell, or create derivative works from any part of this repository
-without prior written permission from Quantumind Ltd. Licensing enquiries
-should be sent to license@haechi.co.uk.
+without prior written permission from the copyright holders. Licensing
+enquiries should be sent to license@haechi.co.uk.
 
 Access to this repository does not transfer ownership of, or any right in, the
 software, documentation, trade marks, or brand assets it contains.
@@ -19,3 +23,8 @@ third_party/manifest.yaml.
 This notice states the default position that applies where no separate written
 agreement exists. It is a placeholder pending legal review and does not
 constitute legal advice.
+
+Joint ownership between two entities requires a written agreement setting out
+how rights are held, licensed and enforced, and what happens if the
+collaboration ends. Until that agreement exists, the split of rights between
+the parties named above is undefined.

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Haechi mark</title>
+  <desc id="desc">An abstract protective shield formed by angular lines.</desc>
+  <path d="M32 4 55 14v16c0 14.4-8.9 25.6-23 30C17.9 55.6 9 44.4 9 30V14L32 4Z" fill="#ff4500"/>
+  <path d="M32 11.5 48 18v11.6c0 9.9-5.7 17.9-16 22.1-10.3-4.2-16-12.2-16-22.1V18l16-6.5Z" fill="#0b0b0c"/>
+  <path d="m22 35 10-16 10 16-5.7-2.1L32 41l-4.3-8.1L22 35Z" fill="#fff"/>
+</svg>
