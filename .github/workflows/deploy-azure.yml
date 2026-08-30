@@ -1,0 +1,168 @@
+name: Deploy Website API to Azure
+
+# Publishes the website origin to Azure Container Apps, UK South.
+#
+# Sequence: build and push the image, run migrations inside the virtual
+# network, then shift traffic. Migrations run as a Container Apps job because
+# the database has no public endpoint and is unreachable from this runner.
+#
+# Authentication uses OIDC federated credentials, so no client secret is
+# stored. Required repository or environment secrets:
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+#   HAECHI_DB_PASSWORD, HAECHI_PILOT_IP_SALT, HAECHI_ALLOWED_ORIGINS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - prod
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-azure-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build, migrate and release
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Sign in to Azure
+        uses: azure/login@0949e32778441b2c442592b7a0e6313466dc8f29 # v3.0.2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Provision infrastructure
+        id: infra
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          HAECHI_DB_PASSWORD: ${{ secrets.HAECHI_DB_PASSWORD }}
+          HAECHI_PILOT_IP_SALT: ${{ secrets.HAECHI_PILOT_IP_SALT }}
+          HAECHI_ALLOWED_ORIGINS: ${{ secrets.HAECHI_ALLOWED_ORIGINS }}
+          HAECHI_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          outputs="$(deploy/azure/deploy.sh)"
+          for key in registryName registryLoginServer containerAppName migrationJobName apiBaseUrl; do
+            value="$(printf '%s' "$outputs" | jq -r ".${key}.value")"
+            if [[ -z "$value" || "$value" == "null" ]]; then
+              echo "deployment output ${key} is missing" >&2
+              exit 1
+            fi
+            echo "${key}=${value}" >> "$GITHUB_OUTPUT"
+          done
+          echo "resourceGroup=rg-haechi-${HAECHI_ENVIRONMENT}-uksouth" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        id: image
+        env:
+          REGISTRY: ${{ steps.infra.outputs.registryLoginServer }}
+          REGISTRY_NAME: ${{ steps.infra.outputs.registryName }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_SHA::12}"
+          reference="${REGISTRY}/haechi-website:${tag}"
+          az acr login --name "$REGISTRY_NAME"
+          docker build --file website/Dockerfile --tag "$reference" website
+          docker push "$reference"
+          echo "reference=${reference}" >> "$GITHUB_OUTPUT"
+
+      - name: Apply database migrations
+        env:
+          RESOURCE_GROUP: ${{ steps.infra.outputs.resourceGroup }}
+          JOB_NAME: ${{ steps.infra.outputs.migrationJobName }}
+          IMAGE: ${{ steps.image.outputs.reference }}
+        run: |
+          set -euo pipefail
+          az containerapp job update \
+            --name "$JOB_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$IMAGE" \
+            --output none
+
+          execution="$(az containerapp job start \
+            --name "$JOB_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query name --output tsv)"
+          echo "migration execution: $execution"
+
+          # Poll to completion. The job is bounded by replicaTimeout in Bicep.
+          for _ in $(seq 1 60); do
+            status="$(az containerapp job execution show \
+              --name "$JOB_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution" \
+              --query properties.status --output tsv)"
+            echo "status: $status"
+            case "$status" in
+              Succeeded) exit 0 ;;
+              Failed|Degraded|Cancelled)
+                echo "migration failed, not shifting traffic" >&2
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+          echo "migration did not complete within the polling window" >&2
+          exit 1
+
+      - name: Release new revision
+        env:
+          RESOURCE_GROUP: ${{ steps.infra.outputs.resourceGroup }}
+          APP_NAME: ${{ steps.infra.outputs.containerAppName }}
+          IMAGE: ${{ steps.image.outputs.reference }}
+        run: |
+          set -euo pipefail
+          az containerapp update \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$IMAGE" \
+            --output none
+
+      - name: Verify the deployed endpoint
+        env:
+          API_BASE: ${{ steps.infra.outputs.apiBaseUrl }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' "${API_BASE}/api/health" || true)"
+            if [[ "$code" == "200" ]]; then
+              echo "health check passed: ${API_BASE}/api/health"
+              exit 0
+            fi
+            echo "attempt ${attempt}: status ${code}"
+            sleep 10
+          done
+          echo "deployed endpoint never became healthy" >&2
+          exit 1
+
+      - name: Report
+        env:
+          API_BASE: ${{ steps.infra.outputs.apiBaseUrl }}
+          IMAGE: ${{ steps.image.outputs.reference }}
+        run: |
+          {
+            echo "### Azure deployment"
+            echo
+            echo "- Environment: ${{ inputs.environment }}"
+            echo "- API base: ${API_BASE}"
+            echo "- Image: ${IMAGE}"
+            echo
+            echo "Set HAECHI_API_BASE to the API base when building the Cloudflare site."
+          } >> "$GITHUB_STEP_SUMMARY"
