@@ -6,7 +6,9 @@
 
 ## Decision
 
-- The product is **Haechi**. The company is **Quantumind Ltd**.
+- The product is **Haechi**, a collaborative product of **Quantumind SSI** and
+  **Haechi Internet Security Services**. Development is carried out under
+  Quantumind SSI.
 - The canonical source organisation is **QuantmindSSI**; the Go module path is
   `github.com/QuantmindSSI/haechi`.
 - "Quantumind Sentinel" and "Q-Sentinel" are retained only if formally approved
