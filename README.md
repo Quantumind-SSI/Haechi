@@ -1,6 +1,6 @@
 # Haechi
 
-Haechi is an enterprise secure communications platform under development by Quantumind Ltd. The intended system combines a WireGuard-based network foundation with privacy-separated access control, post-quantum key reinforcement, controlled adaptive transports, and privacy-minimised operational intelligence.
+Haechi is an enterprise secure communications platform under development by Quantumind SSI, as a collaborative product of Quantumind SSI and Haechi Internet Security Services. The intended system combines a WireGuard-based network foundation with privacy-separated access control, post-quantum key reinforcement, controlled adaptive transports, and privacy-minimised operational intelligence.
 
 ## Engineering Status
 
