@@ -200,7 +200,10 @@ pilotForm?.addEventListener("submit", async (event) => {
   }
 
   try {
-    const response = await fetch("/api/pilot", {
+    // Cloudflare serves these assets; the API lives in Azure. config.js is
+    // generated at build time and is absent when both are same-origin.
+    const apiBase = window.HAECHI_CONFIG?.apiBase || "";
+    const response = await fetch(`${apiBase}/api/pilot`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
