@@ -6,9 +6,11 @@
 - Node.js 20 or newer
 - npm 10 or newer
 - Docker for container and OPA policy checks
-- PostgreSQL 16 or newer to run the website storage tests. They are skipped
-  when `HAECHI_TEST_DATABASE_URL` is unset, so this is optional locally and
-  supplied by a service container in CI
+- PostgreSQL 16 or newer for the storage tests. Two suites use separate
+  databases and separate variables, because their schemas differ:
+  `HAECHI_TEST_DATABASE_URL` for the website and
+  `HAECHI_CONTROL_TEST_DATABASE_URL` for the control plane. Both skip when
+  unset, so they are optional locally and supplied by service containers in CI
 - Azure CLI with the Bicep extension to validate deployment templates
 
 Install locked JavaScript dependencies with:

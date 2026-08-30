@@ -1,6 +1,7 @@
 package routeorch
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 
 type gatewaySource []model.Gateway
 
-func (g gatewaySource) EligibleGateways(string, string, string) ([]model.Gateway, error) {
+func (g gatewaySource) EligibleGateways(context.Context, string, string, string) ([]model.Gateway, error) {
 	return g, nil
 }
 
@@ -24,7 +25,7 @@ func TestRequiredPQExcludesIncapableGateways(t *testing.T) {
 		{ID: "hybrid", PQCapable: true, Load: 0.2},
 	}, signer, "route-key")
 
-	plan, err := svc.Resolve(ResolveRequest{
+	plan, err := svc.Resolve(context.Background(), ResolveRequest{
 		TenantID: "tenant", Audience: "eu-standard", ServiceClass: "general", PQRequirement: model.PQRequired,
 	})
 	if err != nil {
@@ -45,7 +46,7 @@ func TestRequiredPQFailsWithoutCapableGateway(t *testing.T) {
 		t.Fatalf("signer: %v", err)
 	}
 	svc := NewService(gatewaySource{{ID: "classical"}}, signer, "route-key")
-	if _, err := svc.Resolve(ResolveRequest{PQRequirement: model.PQRequired}); err != ErrNoEligibleGateways {
+	if _, err := svc.Resolve(context.Background(), ResolveRequest{PQRequirement: model.PQRequired}); err != ErrNoEligibleGateways {
 		t.Fatalf("want ErrNoEligibleGateways, got %v", err)
 	}
 }
@@ -60,7 +61,7 @@ func TestRoutePlanGatewayCountIsBounded(t *testing.T) {
 		gateways[i] = model.Gateway{ID: fmt.Sprintf("gw-%02d", i), Load: float64(i) / 100}
 	}
 	svc := NewService(gateways, signer, "route-key")
-	plan, err := svc.Resolve(ResolveRequest{PQRequirement: model.PQOff})
+	plan, err := svc.Resolve(context.Background(), ResolveRequest{PQRequirement: model.PQOff})
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
