@@ -1,0 +1,101 @@
+Haechi Product Branding and Creative
+Direction Document
+
+1. Brand Name: Haechi (해태)
+Origin and Meaning: Haechi (해태, Haetae) is a mythical creature from Korean folklore. It is
+typically depicted as a lion-like beast with a horn on its head, often associated with justice,
+protection, and the ability to distinguish good from evil. In traditional Korean architecture,
+Haechi statues are placed at the entrances of palaces and temples to ward off evil spirits
+and disasters, particularly fire. The creature symbolizes vigilance, integrity, and
+guardianship.
+Brand Essence: Haechi embodies Vigilant Protection, Unwavering Integrity, and
+Adaptive Intelligence in the digital realm. It represents a guardian that not only defends
+against threats but also upholds the principles of privacy and justice in an increasingly
+complex digital landscape.
+2. Brand Personality
+ • Protective: A steadfast guardian, always watching over its users' digital well-being.
+ • Intelligent: Sophisticated, leveraging advanced AI and cutting-edge technology to stay
+   ahead of threats.
+ • Trustworthy: Reliable, transparent, and committed to ethical practices and user
+   privacy.
+ • Modern & Innovative: Forward-thinking, constantly evolving to meet new challenges
+   with creative solutions.
+ • Empowering: Gives users control over their digital lives, making complex security
+   accessible.
+ • Mysterious (subtle): Hints at hidden depths and advanced capabilities, without being
+   intimidating.
+3. Brand Tone of Voice
+ • Authoritative yet Approachable: Confident and knowledgeable in cybersecurity, but
+   communicates clearly and simply, avoiding overly technical jargon when addressing
+   general users.
+ • Reassuring & Calm: Conveys a sense of security and peace of mind, especially when
+   discussing threats.
+ • Forward-Looking: Emphasizes innovation and proactive defense.
+ • Ethical & Principled: Reinforces the commitment to privacy and digital rights.
+
+4. Visual Direction (Artistic & Creative)
+4.1. Core Visual Metaphor: The Digital Guardian
+The Haechi creature itself serves as the primary visual metaphor. It should be reinterpreted
+for the digital age, blending traditional symbolism with modern, sleek aesthetics.
+4.2. Color Palette
+ • Primary Colors:
+    • Deep Midnight Blue (#0A1128): Represents security, trust, depth, and the digital
+      night sky where threats lurk.
+    • Electric Teal (#00C4B4): Symbolizes innovation, technology, vigilance, and a
+      beacon of light/protection.
+    • Charcoal Grey (#333333): Provides a sophisticated, stable, and professional base.
+ • Secondary/Accent Colors:
+    • Subtle Silver/Light Grey (#CCCCCC): For highlights, subtle gradients, and clean
+      typography.
+    • Deep Violet/Purple (#6A0572): Used sparingly for emphasis, representing
+      intelligence and mystery.
+4.3. Imagery & Iconography
+ • Abstracted Haechi Symbol: A stylized, minimalist representation of the Haechi
+   creature, focusing on its horn and protective stance. It should feel modern, geometric,
+   and strong, not overly literal or cartoonish.
+ • Digital Grids & Networks: Visual elements that evoke interconnectedness, data flow,
+   and secure pathways.
+ • Light & Shadow: Use of contrasting light and shadow to convey depth, protection, and
+   the idea of illuminating hidden threats.
+ • Shields & Barriers: Abstract representations of protective barriers, digital force fields,
+   or layered defenses.
+ • Subtle AI/ML Visuals: Abstract patterns or subtle animations that hint at intelligent,
+   adaptive systems without being overtly robotic.
+4.4. Typography
+ • Headings: A strong, modern sans-serif font (e.g., Montserrat, Lato, or similar) that
+   conveys authority and clarity.
+ • Body Text: A highly readable sans-serif font (e.g., Open Sans, Roboto, or similar) that is
+   clean and professional.
+ • Monospace (for code/technical elements): A clean monospace font (e.g., Fira Code,
+   Source Code Pro) to denote technical precision.
+4.5. Motion & Interaction (for digital interfaces)
+ • Smooth Transitions: Fluid and subtle animations that convey sophistication and
+   efficiency.
+ • Responsive Feedback: Clear visual feedback for user interactions, reinforcing control
+   and security.
+ • Dynamic Visualizations: Abstract, real-time visualizations of data flow or threat
+   detection (e.g., subtle pulsing lights, shifting patterns) that are informative but not
+   distracting.
+5. Messaging Pillars
+ • Unbreakable Privacy: Emphasize the multi-layered, AI-driven protection that makes
+   user data virtually untraceable.
+ • Intelligent Defense: Highlight the adaptive nature of the VPN, constantly evolving to
+   defeat new threats.
+ • Empowering Control: Focus on giving users and businesses the tools to take charge of
+   their digital security.
+ • Trust Through Transparency: Reinforce the open-source foundation and ethical
+   commitment.
+ • Seamless Security: Position the product as powerful yet easy to use, integrating
+   effortlessly into daily digital life.
+6. Target Audience Perception
+ • For SMBs: Haechi should be perceived as a reliable, advanced, and comprehensive
+   security partner that protects their business and their clients, enhancing their own
+   trustworthiness.
+ • For Consumers: Haechi should be seen as a personal digital guardian, providing peace
+    of mind, ultimate privacy, and freedom in the online world.
+This document serves as a guiding star for all creative endeavors, ensuring a cohesive and
+impactful brand presence for Haechi across all touchpoints. The goal is to communicate
+strength, intelligence, and unwavering protection in a visually compelling and trustworthy
+manner. This document will be further elaborated into specific briefs for brand and web
+designers.
+
