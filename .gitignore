@@ -1,11 +1,10 @@
 .DS_Store
-.env
-.env.*
 !.env.example
 .wrangler/
 **/.wrangler/
 bin/
 coverage.out
+temp_auto_push.bat
 *.test
 *.log
 node_modules/
@@ -14,3 +13,6 @@ dist/
 **/dist/
 runtime/
 **/runtime/
+.gitignore
+branch_structure.json
+config.bat
