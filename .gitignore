@@ -8,9 +8,16 @@ bin/
 coverage.out
 *.test
 *.log
+temp_auto_push.bat
 node_modules/
 **/node_modules/
 dist/
 **/dist/
 runtime/
 **/runtime/
+
+# Derived brand reference renders and text extracts.
+# Regenerate with the commands in dev-docs/brand/brand-specification.md
+brand-assets/
+.gitignore
+branch_structure.json
