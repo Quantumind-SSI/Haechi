@@ -199,10 +199,12 @@
               <h3>Reinforce proven tunnels without a reckless rewrite.</h3>
             </div>
             <p>
-              WireGuard remains the dependable data plane while post-quantum key
-              exchange refreshes its pre-shared keys. Control-plane cryptography
-              follows standardised, interoperable algorithms with downgrade
-              protection.
+              A proven, conservatively chosen data plane stays in place while a
+              post-quantum key exchange continuously refreshes the keys
+              protecting it. Control-plane cryptography follows standardised,
+              interoperable algorithms, and a required reinforcement that cannot
+              be negotiated fails the connection rather than quietly downgrading
+              it.
             </p>
           </div>
           <div class="pillar-row reveal">
@@ -318,10 +320,11 @@
                   A policy-controlled agent on every device.
                 </h3>
                 <p data-architecture-copy>
-                  The Haechi agent coordinates device enrolment, WireGuard,
-                  post-quantum key reinforcement, DNS protection, kill-switch
-                  enforcement and signed updates behind native platform
-                  adapters.
+                  The Haechi agent is the only component that coordinates tunnel
+                  state on a device. It sequences enrolment, key reinforcement,
+                  DNS protection, kill-switch enforcement and signed updates
+                  behind native platform adapters, holding no ambient privilege
+                  of its own.
                 </p>
               </div>
               <ul class="feature-list" data-architecture-points>
@@ -344,41 +347,47 @@
       <section class="section foundations-section">
         <div class="shell foundations-layout">
           <div class="section-heading reveal">
-            <p class="eyebrow">Proven foundations</p>
-            <h2>Integrate what works. Own what differentiates.</h2>
+            <p class="eyebrow">Engineering spine</p>
+            <h2>The security properties come from the seams.</h2>
             <p>
-              Haechi assembles maintained open-source components through
-              controlled adapters, pinned dependencies and signed builds.
-              Product-specific orchestration and privacy behaviour remain
-              Haechi-owned.
+              Encryption and identity are solved problems. What decides whether
+              a system actually protects anyone is the spine that joins them:
+              which component learns what, what happens at each boundary when
+              something fails, and which guarantees survive a compromise. That
+              spine is Haechi’s, and it is where the engineering effort goes.
             </p>
-            <a
-              class="text-link"
-              href="https://github.com/QuantmindSSI/Haechi"
-              rel="noreferrer"
-              >View the origin repository <span aria-hidden="true">↗</span></a
-            >
+            <p>
+              Every dependency sits behind a boundary Haechi owns, is pinned to
+              a reviewed version, and is replaceable without changing product
+              behaviour. No single component is trusted to hold the security
+              property on its own.
+            </p>
           </div>
 
           <div class="foundation-list reveal">
             <div>
-              <span>Network foundation</span
-              ><strong>NetBird · WireGuard</strong>
+              <span>Integration boundary</span
+              ><strong>One adapter per dependency</strong>
             </div>
             <div>
-              <span>PQ transition</span><strong>Rosenpass · OpenSSL</strong>
+              <span>Trust separation</span
+              ><strong>Identity never reaches the gateway</strong>
             </div>
             <div>
-              <span>Identity &amp; policy</span><strong>Keycloak · OPA</strong>
+              <span>Failure behaviour</span
+              ><strong>Deny by default, fail closed</strong>
             </div>
             <div>
-              <span>Protected transport</span><strong>Xray adapter</strong>
+              <span>Cryptographic posture</span
+              ><strong>No silent downgrade</strong>
             </div>
             <div>
-              <span>Operations</span><strong>OpenTelemetry · Prometheus</strong>
+              <span>Telemetry boundary</span
+              ><strong>Prohibited fields cannot cross</strong>
             </div>
             <div>
-              <span>Supply chain</span><strong>Trivy · Syft · Cosign</strong>
+              <span>Release evidence</span
+              ><strong>Pinned, reviewed, reproducible</strong>
             </div>
           </div>
         </div>
@@ -501,7 +510,8 @@
               <div>
                 <strong>Secure network foundation</strong>
                 <p>
-                  Managed WireGuard, gateway, endpoint agent and kill switch.
+                  Managed encrypted transit, gateway, endpoint agent and kill
+                  switch.
                 </p>
               </div>
             </li>
@@ -703,9 +713,7 @@
           </div>
           <div>
             <strong>Company</strong><a href="#pilot">Enterprise pilot</a
-            ><a href="https://github.com/QuantmindSSI/Haechi" rel="noreferrer"
-              >GitHub</a
-            >
+            ><a href="mailto:hello@haechi.co.uk">Contact</a>
           </div>
           <div>
             <strong>Legal</strong><a href="/privacy">Privacy</a
