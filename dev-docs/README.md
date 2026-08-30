@@ -27,6 +27,7 @@ The controlling statement of what actually works is [`engineering/readiness.md`]
 | [`threat-model/telemetry-prohibition-list.md`](threat-model/telemetry-prohibition-list.md) | Authoritative | Fields that must never cross the telemetry boundary, enforced by `services/gim` |
 | [`adr/README.md`](adr/README.md)                                                           | Authoritative | Architecture decision register                                                  |
 | [`operations/deployment.md`](operations/deployment.md)                                     | Authoritative | Website deployment runbook for Cloudflare Pages and Azure Container Apps        |
+| [`operations/email-routing.md`](operations/email-routing.md)                               | Authoritative | Email Routing configuration for haechi.co.uk and the anti-spoofing records      |
 
 ### Architecture Decision Records
 
