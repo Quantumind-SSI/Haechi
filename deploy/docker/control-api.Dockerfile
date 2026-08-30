@@ -2,7 +2,12 @@
 FROM golang:1.26.6-alpine3.23@sha256:e57c41c1d5864341031181b0db34b9a537bb5773eb6428e4e5bdaea0f9135406 AS build
 WORKDIR /src
 RUN apk add --no-cache ca-certificates
-COPY go.mod ./
+# go.sum is required now that the composition root pulls in a database driver.
+# Dependencies are downloaded and verified before the source is copied, so the
+# layer is cached and a source change does not refetch the module graph.
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
 COPY adapters ./adapters
 COPY cmd ./cmd
 COPY internal ./internal
