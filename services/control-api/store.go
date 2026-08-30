@@ -7,6 +7,7 @@
 package controlapi
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -44,24 +45,32 @@ type TenantPolicy struct {
 }
 
 // Store is the durable-state contract. A PostgreSQL implementation with
-// row-level tenant isolation is the production target; MemoryStore is used for
+// tenant-scoped queries is the production target; MemoryStore is used for
 // development and tests.
+//
+// Every method takes a context. A control-plane request that outlives its
+// caller is a request holding a connection nobody is waiting for, so the
+// deadline has to reach the driver rather than stopping at the HTTP layer.
 type Store interface {
-	CreateTenant(t model.Tenant, initialPolicy TenantPolicy) error
-	GetTenant(id string) (model.Tenant, error)
+	CreateTenant(ctx context.Context, t model.Tenant, initialPolicy TenantPolicy) error
+	GetTenant(ctx context.Context, id string) (model.Tenant, error)
 
-	PutEnrollmentCode(c EnrollmentCode) error
-	GetEnrollmentCode(code string) (EnrollmentCode, error)
-	ConsumeEnrollmentCode(code string, now time.Time, d model.Device) error
-	GetDevice(id string) (model.Device, error)
-	RevokeDevice(id string, at time.Time) error
+	PutEnrollmentCode(ctx context.Context, c EnrollmentCode) error
+	GetEnrollmentCode(ctx context.Context, code string) (EnrollmentCode, error)
+	ConsumeEnrollmentCode(ctx context.Context, code string, now time.Time, d model.Device) error
+	GetDevice(ctx context.Context, id string) (model.Device, error)
+	RevokeDevice(ctx context.Context, id string, at time.Time) error
 
-	UpsertGateway(g model.Gateway) error
-	GetGateway(id string) (model.Gateway, error)
-	ListGateways(tenantID string) ([]model.Gateway, error)
+	UpsertGateway(ctx context.Context, g model.Gateway) error
+	GetGateway(ctx context.Context, id string) (model.Gateway, error)
+	ListGateways(ctx context.Context, tenantID string) ([]model.Gateway, error)
 
-	ReplaceTenantPolicy(tenantID string, p TenantPolicy) error
-	GetTenantPolicy(tenantID string) (TenantPolicy, error)
+	ReplaceTenantPolicy(ctx context.Context, tenantID string, p TenantPolicy) error
+	GetTenantPolicy(ctx context.Context, tenantID string) (TenantPolicy, error)
+
+	// Ping reports whether the store is reachable. Readiness depends on it, so
+	// a revision that cannot reach its database never receives traffic.
+	Ping(ctx context.Context) error
 }
 
 // MemoryStore is a concurrency-safe in-memory Store.
@@ -85,7 +94,7 @@ func NewMemoryStore() *MemoryStore {
 	}
 }
 
-func (s *MemoryStore) CreateTenant(t model.Tenant, initialPolicy TenantPolicy) error {
+func (s *MemoryStore) CreateTenant(_ context.Context, t model.Tenant, initialPolicy TenantPolicy) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.tenants[t.ID]; ok {
@@ -97,7 +106,7 @@ func (s *MemoryStore) CreateTenant(t model.Tenant, initialPolicy TenantPolicy) e
 	return nil
 }
 
-func (s *MemoryStore) GetTenant(id string) (model.Tenant, error) {
+func (s *MemoryStore) GetTenant(_ context.Context, id string) (model.Tenant, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	t, ok := s.tenants[id]
@@ -107,7 +116,7 @@ func (s *MemoryStore) GetTenant(id string) (model.Tenant, error) {
 	return t, nil
 }
 
-func (s *MemoryStore) PutEnrollmentCode(c EnrollmentCode) error {
+func (s *MemoryStore) PutEnrollmentCode(_ context.Context, c EnrollmentCode) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.codes[c.Code]; exists {
@@ -117,7 +126,7 @@ func (s *MemoryStore) PutEnrollmentCode(c EnrollmentCode) error {
 	return nil
 }
 
-func (s *MemoryStore) GetEnrollmentCode(code string) (EnrollmentCode, error) {
+func (s *MemoryStore) GetEnrollmentCode(_ context.Context, code string) (EnrollmentCode, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	c, ok := s.codes[code]
@@ -127,7 +136,7 @@ func (s *MemoryStore) GetEnrollmentCode(code string) (EnrollmentCode, error) {
 	return c, nil
 }
 
-func (s *MemoryStore) ConsumeEnrollmentCode(code string, now time.Time, d model.Device) error {
+func (s *MemoryStore) ConsumeEnrollmentCode(_ context.Context, code string, now time.Time, d model.Device) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	c, ok := s.codes[code]
@@ -152,7 +161,7 @@ func (s *MemoryStore) ConsumeEnrollmentCode(code string, now time.Time, d model.
 	return nil
 }
 
-func (s *MemoryStore) GetDevice(id string) (model.Device, error) {
+func (s *MemoryStore) GetDevice(_ context.Context, id string) (model.Device, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	d, ok := s.devices[id]
@@ -162,7 +171,7 @@ func (s *MemoryStore) GetDevice(id string) (model.Device, error) {
 	return d, nil
 }
 
-func (s *MemoryStore) RevokeDevice(id string, at time.Time) error {
+func (s *MemoryStore) RevokeDevice(_ context.Context, id string, at time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	d, ok := s.devices[id]
@@ -175,7 +184,7 @@ func (s *MemoryStore) RevokeDevice(id string, at time.Time) error {
 	return nil
 }
 
-func (s *MemoryStore) UpsertGateway(g model.Gateway) error {
+func (s *MemoryStore) UpsertGateway(_ context.Context, g model.Gateway) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if existing, ok := s.gateways[g.ID]; ok && existing.TenantID != g.TenantID {
@@ -185,7 +194,7 @@ func (s *MemoryStore) UpsertGateway(g model.Gateway) error {
 	return nil
 }
 
-func (s *MemoryStore) GetGateway(id string) (model.Gateway, error) {
+func (s *MemoryStore) GetGateway(_ context.Context, id string) (model.Gateway, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	g, ok := s.gateways[id]
@@ -195,7 +204,7 @@ func (s *MemoryStore) GetGateway(id string) (model.Gateway, error) {
 	return g, nil
 }
 
-func (s *MemoryStore) ListGateways(tenantID string) ([]model.Gateway, error) {
+func (s *MemoryStore) ListGateways(_ context.Context, tenantID string) ([]model.Gateway, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := make([]model.Gateway, 0, len(s.gateways))
@@ -208,7 +217,7 @@ func (s *MemoryStore) ListGateways(tenantID string) ([]model.Gateway, error) {
 	return out, nil
 }
 
-func (s *MemoryStore) ReplaceTenantPolicy(tenantID string, p TenantPolicy) error {
+func (s *MemoryStore) ReplaceTenantPolicy(_ context.Context, tenantID string, p TenantPolicy) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.tenants[tenantID]; !ok {
@@ -219,7 +228,7 @@ func (s *MemoryStore) ReplaceTenantPolicy(tenantID string, p TenantPolicy) error
 	return nil
 }
 
-func (s *MemoryStore) GetTenantPolicy(tenantID string) (TenantPolicy, error) {
+func (s *MemoryStore) GetTenantPolicy(_ context.Context, tenantID string) (TenantPolicy, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	p, ok := s.policies[tenantID]
@@ -228,3 +237,6 @@ func (s *MemoryStore) GetTenantPolicy(tenantID string) (TenantPolicy, error) {
 	}
 	return p, nil
 }
+
+// Ping implements Store. Memory is always reachable.
+func (s *MemoryStore) Ping(_ context.Context) error { return nil }

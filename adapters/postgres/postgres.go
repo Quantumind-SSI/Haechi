@@ -9,6 +9,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -27,18 +28,18 @@ var _ controlapi.Store = (*Store)(nil)
 // New wraps an established *sql.DB (opened by the entrypoint with the pgx driver).
 func New(db *sql.DB) *Store { return &Store{db: db} }
 
-func (s *Store) CreateTenant(t model.Tenant, initialPolicy controlapi.TenantPolicy) error {
+func (s *Store) CreateTenant(ctx context.Context, t model.Tenant, initialPolicy controlapi.TenantPolicy) error {
 	classes, transports, dns, err := marshalPolicy(initialPolicy)
 	if err != nil {
 		return err
 	}
-	return inTransaction(s.db, func(tx *sql.Tx) error {
-		if _, err := tx.Exec(
+	return inTransaction(ctx, s.db, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO tenants(id,name,idp_issuer,created_at) VALUES($1,$2,$3,$4)`,
 			t.ID, t.Name, t.IdPIssuer, t.CreatedAt); err != nil {
 			return err
 		}
-		_, err := tx.Exec(
+		_, err := tx.ExecContext(ctx,
 			`INSERT INTO tenant_policies(tenant_id,allowed_service_classes,allowed_transports,pq_requirement,kill_switch,dns,version)
 			 VALUES($1,$2,$3,$4,$5,$6,1)`,
 			t.ID, classes, transports, string(initialPolicy.PQRequirement), initialPolicy.KillSwitch, dns)
@@ -46,9 +47,9 @@ func (s *Store) CreateTenant(t model.Tenant, initialPolicy controlapi.TenantPoli
 	})
 }
 
-func (s *Store) GetTenant(id string) (model.Tenant, error) {
+func (s *Store) GetTenant(ctx context.Context, id string) (model.Tenant, error) {
 	var t model.Tenant
-	err := s.db.QueryRow(
+	err := s.db.QueryRowContext(ctx,
 		`SELECT id,name,idp_issuer,created_at FROM tenants WHERE id=$1`, id).
 		Scan(&t.ID, &t.Name, &t.IdPIssuer, &t.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -57,8 +58,8 @@ func (s *Store) GetTenant(id string) (model.Tenant, error) {
 	return t, err
 }
 
-func (s *Store) PutEnrollmentCode(c controlapi.EnrollmentCode) error {
-	res, err := s.db.Exec(
+func (s *Store) PutEnrollmentCode(ctx context.Context, c controlapi.EnrollmentCode) error {
+	res, err := s.db.ExecContext(ctx,
 		`INSERT INTO enrollment_codes(code,tenant_id,challenge,expires_at,used)
 		 VALUES($1,$2,$3,$4,$5) ON CONFLICT(code) DO NOTHING`,
 		c.Code, c.TenantID, c.Challenge, c.ExpiresAt, c.Used)
@@ -71,9 +72,9 @@ func (s *Store) PutEnrollmentCode(c controlapi.EnrollmentCode) error {
 	return nil
 }
 
-func (s *Store) GetEnrollmentCode(code string) (controlapi.EnrollmentCode, error) {
+func (s *Store) GetEnrollmentCode(ctx context.Context, code string) (controlapi.EnrollmentCode, error) {
 	var c controlapi.EnrollmentCode
-	err := s.db.QueryRow(
+	err := s.db.QueryRowContext(ctx,
 		`SELECT code,tenant_id,challenge,expires_at,used FROM enrollment_codes WHERE code=$1`, code).
 		Scan(&c.Code, &c.TenantID, &c.Challenge, &c.ExpiresAt, &c.Used)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -82,12 +83,12 @@ func (s *Store) GetEnrollmentCode(code string) (controlapi.EnrollmentCode, error
 	return c, err
 }
 
-func (s *Store) ConsumeEnrollmentCode(code string, now time.Time, d model.Device) (err error) {
-	return inTransaction(s.db, func(tx *sql.Tx) error {
+func (s *Store) ConsumeEnrollmentCode(ctx context.Context, code string, now time.Time, d model.Device) (err error) {
+	return inTransaction(ctx, s.db, func(tx *sql.Tx) error {
 		var tenantID string
 		var expiresAt time.Time
 		var used bool
-		err := tx.QueryRow(
+		err := tx.QueryRowContext(ctx,
 			`SELECT tenant_id,expires_at,used FROM enrollment_codes WHERE code=$1 FOR UPDATE`, code).
 			Scan(&tenantID, &expiresAt, &used)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -105,13 +106,13 @@ func (s *Store) ConsumeEnrollmentCode(code string, now time.Time, d model.Device
 		if tenantID != d.TenantID {
 			return controlapi.ErrConflict
 		}
-		if _, err := tx.Exec(
+		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO devices(id,tenant_id,public_key,platform,posture,enrolled_at,revoked,revoked_at)
 			 VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
 			d.ID, d.TenantID, d.PublicKey.Bytes(), d.Platform, d.Posture, d.EnrolledAt, d.Revoked, d.RevokedAt); err != nil {
 			return err
 		}
-		res, err := tx.Exec(`UPDATE enrollment_codes SET used=true WHERE code=$1 AND used=false`, code)
+		res, err := tx.ExecContext(ctx, `UPDATE enrollment_codes SET used=true WHERE code=$1 AND used=false`, code)
 		if err != nil {
 			return err
 		}
@@ -122,12 +123,12 @@ func (s *Store) ConsumeEnrollmentCode(code string, now time.Time, d model.Device
 	})
 }
 
-func (s *Store) GetDevice(id string) (model.Device, error) {
+func (s *Store) GetDevice(ctx context.Context, id string) (model.Device, error) {
 	var (
 		d      model.Device
 		pubRaw []byte
 	)
-	err := s.db.QueryRow(
+	err := s.db.QueryRowContext(ctx,
 		`SELECT id,tenant_id,public_key,platform,posture,enrolled_at,revoked,revoked_at
 		 FROM devices WHERE id=$1`, id).
 		Scan(&d.ID, &d.TenantID, &pubRaw, &d.Platform, &d.Posture, &d.EnrolledAt, &d.Revoked, &d.RevokedAt)
@@ -145,20 +146,20 @@ func (s *Store) GetDevice(id string) (model.Device, error) {
 	return d, nil
 }
 
-func (s *Store) RevokeDevice(id string, at time.Time) error {
-	res, err := s.db.Exec(`UPDATE devices SET revoked=true, revoked_at=$2 WHERE id=$1`, id, at)
+func (s *Store) RevokeDevice(ctx context.Context, id string, at time.Time) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE devices SET revoked=true, revoked_at=$2 WHERE id=$1`, id, at)
 	if err != nil {
 		return err
 	}
 	return mustAffect(res)
 }
 
-func (s *Store) UpsertGateway(g model.Gateway) error {
+func (s *Store) UpsertGateway(ctx context.Context, g model.Gateway) error {
 	classes, err := json.Marshal(g.ServiceClasses)
 	if err != nil {
 		return err
 	}
-	res, err := s.db.Exec(
+	res, err := s.db.ExecContext(ctx,
 		`INSERT INTO gateways(id,tenant_id,region,audience,service_classes,endpoint,wireguard_public_key,pq_capable,healthy,load,last_seen)
 		 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 		 ON CONFLICT(id) DO UPDATE SET region=$3,audience=$4,service_classes=$5,endpoint=$6,
@@ -175,8 +176,8 @@ func (s *Store) UpsertGateway(g model.Gateway) error {
 	return nil
 }
 
-func (s *Store) GetGateway(id string) (model.Gateway, error) {
-	g, classes, err := scanGateway(s.db.QueryRow(
+func (s *Store) GetGateway(ctx context.Context, id string) (model.Gateway, error) {
+	g, classes, err := scanGateway(s.db.QueryRowContext(ctx,
 		`SELECT id,tenant_id,region,audience,service_classes,endpoint,wireguard_public_key,pq_capable,healthy,load,last_seen
 		 FROM gateways WHERE id=$1`, id))
 	if errors.Is(err, sql.ErrNoRows) {
@@ -191,8 +192,8 @@ func (s *Store) GetGateway(id string) (model.Gateway, error) {
 	return g, nil
 }
 
-func (s *Store) ListGateways(tenantID string) ([]model.Gateway, error) {
-	rows, err := s.db.Query(
+func (s *Store) ListGateways(ctx context.Context, tenantID string) ([]model.Gateway, error) {
+	rows, err := s.db.QueryContext(ctx,
 		`SELECT id,tenant_id,region,audience,service_classes,endpoint,wireguard_public_key,pq_capable,healthy,load,last_seen
 		 FROM gateways WHERE tenant_id=$1`, tenantID)
 	if err != nil {
@@ -213,12 +214,12 @@ func (s *Store) ListGateways(tenantID string) ([]model.Gateway, error) {
 	return out, rows.Err()
 }
 
-func (s *Store) ReplaceTenantPolicy(tenantID string, p controlapi.TenantPolicy) error {
+func (s *Store) ReplaceTenantPolicy(ctx context.Context, tenantID string, p controlapi.TenantPolicy) error {
 	classes, transports, dns, err := marshalPolicy(p)
 	if err != nil {
 		return err
 	}
-	_, err = s.db.Exec(
+	_, err = s.db.ExecContext(ctx,
 		`INSERT INTO tenant_policies(tenant_id,allowed_service_classes,allowed_transports,pq_requirement,kill_switch,dns,version)
 		 VALUES($1,$2,$3,$4,$5,$6,1)
 		 ON CONFLICT(tenant_id) DO UPDATE SET allowed_service_classes=$2,allowed_transports=$3,
@@ -227,7 +228,7 @@ func (s *Store) ReplaceTenantPolicy(tenantID string, p controlapi.TenantPolicy) 
 	return err
 }
 
-func (s *Store) GetTenantPolicy(tenantID string) (controlapi.TenantPolicy, error) {
+func (s *Store) GetTenantPolicy(ctx context.Context, tenantID string) (controlapi.TenantPolicy, error) {
 	var (
 		p          controlapi.TenantPolicy
 		classes    []byte
@@ -235,7 +236,7 @@ func (s *Store) GetTenantPolicy(tenantID string) (controlapi.TenantPolicy, error
 		dns        []byte
 		pq         string
 	)
-	err := s.db.QueryRow(
+	err := s.db.QueryRowContext(ctx,
 		`SELECT allowed_service_classes,allowed_transports,pq_requirement,kill_switch,dns,version
 		 FROM tenant_policies WHERE tenant_id=$1`, tenantID).
 		Scan(&classes, &transports, &pq, &p.KillSwitch, &dns, &p.Version)
@@ -298,8 +299,8 @@ func marshalPolicy(p controlapi.TenantPolicy) ([]byte, []byte, []byte, error) {
 	return classes, transports, dns, nil
 }
 
-func inTransaction(db *sql.DB, fn func(*sql.Tx) error) (err error) {
-	tx, err := db.Begin()
+func inTransaction(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) (err error) {
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -320,4 +321,10 @@ func inTransaction(db *sql.DB, fn func(*sql.Tx) error) (err error) {
 	}
 	committed = true
 	return nil
+}
+
+// Ping implements controlapi.Store. Readiness depends on it, so it verifies a
+// usable connection rather than only that the pool object exists.
+func (s *Store) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
 }

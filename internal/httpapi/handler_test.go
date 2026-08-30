@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,9 @@ import (
 	controlapi "github.com/QuantmindSSI/haechi/services/control-api"
 	"github.com/QuantmindSSI/haechi/services/entitlement"
 )
+
+// ctx is the background context for tests; production paths carry a request context.
+var ctx = context.Background()
 
 func newTestHandler(t *testing.T) (*controlapi.Service, http.Handler) {
 	t.Helper()
@@ -101,11 +105,11 @@ func TestStrictJSONDecoding(t *testing.T) {
 
 func TestEnrollmentUsesProofInsteadOfAdministratorBearer(t *testing.T) {
 	svc, handler := newTestHandler(t)
-	tenant, err := svc.CreateTenant("Acme", "")
+	tenant, err := svc.CreateTenant(ctx, "Acme", "")
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}
-	code, err := svc.IssueEnrollmentCode(tenant.ID)
+	code, err := svc.IssueEnrollmentCode(ctx, tenant.ID)
 	if err != nil {
 		t.Fatalf("issue enrollment code: %v", err)
 	}
@@ -135,7 +139,7 @@ func TestEnrollmentUsesProofInsteadOfAdministratorBearer(t *testing.T) {
 
 func TestPolicyRequestUsesOpenAPIFieldNames(t *testing.T) {
 	svc, handler := newTestHandler(t)
-	tenant, err := svc.CreateTenant("Acme", "")
+	tenant, err := svc.CreateTenant(ctx, "Acme", "")
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}
@@ -153,7 +157,7 @@ func TestPolicyRequestUsesOpenAPIFieldNames(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
 	}
-	bundle, err := svc.PolicyBundle(tenant.ID)
+	bundle, err := svc.PolicyBundle(ctx, tenant.ID)
 	if err != nil {
 		t.Fatalf("policy bundle: %v", err)
 	}

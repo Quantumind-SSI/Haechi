@@ -4,6 +4,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -26,8 +27,25 @@ func New(svc *controlapi.Service, verifier entitlement.IdentityVerifier) http.Ha
 		mux.Handle(pattern, requireControlAdmin(verifier, handler))
 	}
 
+	// Liveness. The process is running and serving; it says nothing about
+	// dependencies, so a database outage must not cause a restart loop.
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	// Readiness. Reports unhealthy when durable state is unreachable, so an
+	// instance that cannot serve a request never receives traffic.
+	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		defer cancel()
+		if err := svc.Ping(ctx); err != nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+				"status": "unavailable",
+				"store":  "unreachable",
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
 
 	admin("POST /api/v1/tenants", func(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +56,7 @@ func New(svc *controlapi.Service, verifier entitlement.IdentityVerifier) http.Ha
 		if !decode(w, r, &req) {
 			return
 		}
-		t, err := svc.CreateTenant(req.Name, req.IdPIssuer)
+		t, err := svc.CreateTenant(r.Context(), req.Name, req.IdPIssuer)
 		if err != nil {
 			writeErr(w, http.StatusConflict, err)
 			return
@@ -51,7 +69,7 @@ func New(svc *controlapi.Service, verifier entitlement.IdentityVerifier) http.Ha
 		if !decode(w, r, &p) {
 			return
 		}
-		if err := svc.SetTenantPolicy(r.PathValue("id"), p); err != nil {
+		if err := svc.SetTenantPolicy(r.Context(), r.PathValue("id"), p); err != nil {
 			writeErr(w, http.StatusBadRequest, err)
 			return
 		}
@@ -59,7 +77,7 @@ func New(svc *controlapi.Service, verifier entitlement.IdentityVerifier) http.Ha
 	})
 
 	admin("POST /api/v1/tenants/{id}/enrollment-codes", func(w http.ResponseWriter, r *http.Request) {
-		code, err := svc.IssueEnrollmentCode(r.PathValue("id"))
+		code, err := svc.IssueEnrollmentCode(r.Context(), r.PathValue("id"))
 		if err != nil {
 			writeErr(w, http.StatusNotFound, err)
 			return
@@ -82,7 +100,7 @@ func New(svc *controlapi.Service, verifier entitlement.IdentityVerifier) http.Ha
 		if !decode(w, r, &body) {
 			return
 		}
-		dev, err := svc.EnrollDevice(controlapi.EnrollRequest{
+		dev, err := svc.EnrollDevice(r.Context(), controlapi.EnrollRequest{
 			Code: body.Code, PublicKey: body.PublicKey, Platform: body.Platform,
 			Posture: body.Posture, Proof: body.Proof,
 		})
@@ -94,7 +112,7 @@ func New(svc *controlapi.Service, verifier entitlement.IdentityVerifier) http.Ha
 	})
 
 	admin("DELETE /api/v1/devices/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if err := svc.RevokeDevice(r.PathValue("id")); err != nil {
+		if err := svc.RevokeDevice(r.Context(), r.PathValue("id")); err != nil {
 			writeErr(w, http.StatusNotFound, err)
 			return
 		}
@@ -106,7 +124,7 @@ func New(svc *controlapi.Service, verifier entitlement.IdentityVerifier) http.Ha
 		if !decode(w, r, &g) {
 			return
 		}
-		if err := svc.RegisterGateway(g); err != nil {
+		if err := svc.RegisterGateway(r.Context(), g); err != nil {
 			writeErr(w, http.StatusBadRequest, err)
 			return
 		}
@@ -122,7 +140,7 @@ func New(svc *controlapi.Service, verifier entitlement.IdentityVerifier) http.Ha
 		if !decode(w, r, &body) {
 			return
 		}
-		if err := svc.PublishGatewayHealth(body.GatewayID, body.Healthy, body.Load); err != nil {
+		if err := svc.PublishGatewayHealth(r.Context(), body.GatewayID, body.Healthy, body.Load); err != nil {
 			writeErr(w, http.StatusNotFound, err)
 			return
 		}
@@ -132,7 +150,7 @@ func New(svc *controlapi.Service, verifier entitlement.IdentityVerifier) http.Ha
 	// Agent-facing: signed, rollback-protected policy bundle (§7 FetchPolicyBundle).
 	admin("GET /api/v1/policy-bundle", func(w http.ResponseWriter, r *http.Request) {
 		tenant := r.URL.Query().Get("tenant")
-		bundle, err := svc.PolicyBundle(tenant)
+		bundle, err := svc.PolicyBundle(r.Context(), tenant)
 		if err != nil {
 			writeErr(w, http.StatusNotFound, err)
 			return

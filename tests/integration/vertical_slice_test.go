@@ -26,6 +26,9 @@ import (
 	routeorch "github.com/QuantmindSSI/haechi/services/route-orchestrator"
 )
 
+// ctx is the background context for tests; production paths carry a request context.
+var ctx = context.Background()
+
 const (
 	audience     = "eu-standard"
 	serviceClass = "general"
@@ -72,11 +75,11 @@ func setup(t *testing.T) *slice {
 	orch := routeorch.NewService(control, orchSigner, "route-key-1")
 
 	// --- Admin actions: tenant, policy, gateway ---
-	tenant, err := control.CreateTenant("Acme", "https://keycloak/realms/acme")
+	tenant, err := control.CreateTenant(ctx, "Acme", "https://keycloak/realms/acme")
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}
-	if err := control.SetTenantPolicy(tenant.ID, controlapi.TenantPolicy{
+	if err := control.SetTenantPolicy(ctx, tenant.ID, controlapi.TenantPolicy{
 		AllowedServiceClasses: []string{serviceClass},
 		AllowedTransports:     []model.Transport{model.TransportDirect},
 		PQRequirement:         model.PQPreferred,
@@ -85,23 +88,23 @@ func setup(t *testing.T) *slice {
 	}); err != nil {
 		t.Fatalf("set policy: %v", err)
 	}
-	if err := control.RegisterGateway(model.Gateway{
+	if err := control.RegisterGateway(ctx, model.Gateway{
 		ID: "gw-eu-1", TenantID: tenant.ID, Region: "eu-west", Audience: audience,
 		ServiceClasses: []string{serviceClass}, Endpoint: "gw-eu-1.haechi.net:51820",
 		WireGuardPublicKey: wgKeyB64(t), PQCapable: true,
 	}); err != nil {
 		t.Fatalf("register gateway: %v", err)
 	}
-	if err := control.PublishGatewayHealth("gw-eu-1", true, 0.2); err != nil {
+	if err := control.PublishGatewayHealth(ctx, "gw-eu-1", true, 0.2); err != nil {
 		t.Fatalf("health: %v", err)
 	}
 
 	// --- Device enrolment with proof-of-possession ---
-	code, _ := control.IssueEnrollmentCode(tenant.ID)
+	code, _ := control.IssueEnrollmentCode(ctx, tenant.ID)
 	devKey, _ := signing.Generate()
 	proof, _ := devKey.Sign(signing.ContextEnrollmentChallenge,
 		controlapi.EnrollmentProofMessage(devKey.Public(), code.Challenge))
-	device, err := control.EnrollDevice(controlapi.EnrollRequest{
+	device, err := control.EnrollDevice(ctx, controlapi.EnrollRequest{
 		Code: code.Code, PublicKey: devKey.Public(), Platform: "linux", Proof: proof,
 	})
 	if err != nil {
@@ -131,12 +134,12 @@ func (s *slice) buildAgent(t *testing.T) *agentcore.Agent {
 	}
 	deps := agentcore.Deps{
 		FetchPolicy: func(tenantID string) (model.SignedPolicyBundle, error) {
-			return s.control.PolicyBundle(tenantID)
+			return s.control.PolicyBundle(ctx, tenantID)
 		},
 		Entitle: func(aud, sc string) (entitlement.SignedGrant, error) {
 			// Layered enforcement: device authorisation (control/OPA) AND
 			// subject entitlement (identity/Keycloak) before any capability.
-			if dec := s.control.Authorize(s.device.ID, sc); !dec.Allow {
+			if dec := s.control.Authorize(ctx, s.device.ID, sc); !dec.Allow {
 				return entitlement.SignedGrant{}, errDenied(dec.Reason)
 			}
 			return s.ent.Issue(context.Background(), s.subject, aud, sc)
@@ -144,7 +147,7 @@ func (s *slice) buildAgent(t *testing.T) *agentcore.Agent {
 		IssuerPublicKey: s.issuer.PublicKey,
 		IssueCapability: s.issuer.Issue,
 		ResolveRoute: func(tenantID, aud, sc string, pq model.PQMode) (model.SignedRoutePlan, error) {
-			return s.orch.Resolve(routeorch.ResolveRequest{
+			return s.orch.Resolve(ctx, routeorch.ResolveRequest{
 				TenantID: tenantID, Audience: aud, ServiceClass: sc, PQRequirement: pq,
 			})
 		},
@@ -204,7 +207,7 @@ func TestConnectDeniedForUnpermittedServiceClass(t *testing.T) {
 
 func TestConnectFailsClosedOnRevokedDevice(t *testing.T) {
 	s := setup(t)
-	if err := s.control.RevokeDevice(s.device.ID); err != nil {
+	if err := s.control.RevokeDevice(ctx, s.device.ID); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
 	agent := s.buildAgent(t)
@@ -222,14 +225,14 @@ func TestConnectFailsClosedOnTamperedPolicySignature(t *testing.T) {
 	badKey, _ := signing.Generate()
 	trust := agentcore.Trust{ControlPlanePub: badKey.Public(), RoutePlanPub: s.orch.Pub()}
 	deps := agentcore.Deps{
-		FetchPolicy: func(tid string) (model.SignedPolicyBundle, error) { return s.control.PolicyBundle(tid) },
+		FetchPolicy: func(tid string) (model.SignedPolicyBundle, error) { return s.control.PolicyBundle(ctx, tid) },
 		Entitle: func(aud, sc string) (entitlement.SignedGrant, error) {
 			return s.ent.Issue(context.Background(), s.subject, aud, sc)
 		},
 		IssuerPublicKey: s.issuer.PublicKey,
 		IssueCapability: s.issuer.Issue,
 		ResolveRoute: func(tid, aud, sc string, pq model.PQMode) (model.SignedRoutePlan, error) {
-			return s.orch.Resolve(routeorch.ResolveRequest{TenantID: tid, Audience: aud, ServiceClass: sc, PQRequirement: pq})
+			return s.orch.Resolve(ctx, routeorch.ResolveRequest{TenantID: tid, Audience: aud, ServiceClass: sc, PQRequirement: pq})
 		},
 		Admit:  s.admit,
 		Tunnel: s.loopback,

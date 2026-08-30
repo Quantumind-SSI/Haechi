@@ -22,6 +22,24 @@ jobs:
     name: Go quality gates
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    services:
+      # Exercises the PostgreSQL control-plane store: tenant isolation and
+      # transactional enrolment cannot be proven against the memory store.
+      postgres:
+        image: postgres:16.4@sha256:e62fbf9d3e2b49816a32c400ed2dba83e3b361e6833e624024309c35d334b412
+        env:
+          POSTGRES_USER: haechi
+          POSTGRES_PASSWORD: haechi
+          POSTGRES_DB: haechi_control
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U haechi"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      HAECHI_CONTROL_TEST_DATABASE_URL: postgresql://haechi:haechi@127.0.0.1:5433/haechi_control
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

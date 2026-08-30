@@ -35,7 +35,7 @@ The website and local development services are executable. The control-plane, en
 
 ## Production Release Blockers
 
-1. Wire PostgreSQL into a production composition root with versioned migrations, backup and restore evidence, connection limits, deadlines, readiness checks, and tenant-isolation integration tests.
+1. ~~Wire PostgreSQL into a production composition root with connection limits, deadlines, readiness checks and tenant-isolation integration tests.~~ Done, see ADR-011. Still outstanding within this item: a versioned migration runner before the first destructive schema change, row-level security as defence in depth, and documented backup and restore evidence for the control-plane database.
 2. Define and enforce the administrator, device, and gateway authorization matrix. Add mutually authenticated service transport and bind device revocation to entitlement issuance.
 3. Implement a real platform tunnel adapter and privileged helper. Prove firewall kill-switch behavior, DNS protection, reconnect teardown, route cleanup, and gateway failover on every supported operating system.
 4. Replace the custom blind RSA construction with the reviewed RFC 9474 design selected by ADR-004. Add published vectors, key rotation, external cryptographic review, and a signed verifier directory.

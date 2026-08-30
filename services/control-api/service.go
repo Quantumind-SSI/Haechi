@@ -67,7 +67,7 @@ func (s *Service) SignerPub() signing.PublicKey { return s.signer.Public() }
 func (s *Service) SignerKeyID() string { return s.signerKeyID }
 
 // CreateTenant provisions an enterprise boundary.
-func (s *Service) CreateTenant(name, idpIssuer string) (model.Tenant, error) {
+func (s *Service) CreateTenant(ctx context.Context, name, idpIssuer string) (model.Tenant, error) {
 	name = strings.TrimSpace(name)
 	if name == "" || len(name) > 120 {
 		return model.Tenant{}, fmt.Errorf("%w: tenant name", ErrInvalid)
@@ -91,15 +91,15 @@ func (s *Service) CreateTenant(name, idpIssuer string) (model.Tenant, error) {
 		KillSwitch:            true,
 		DNS:                   []string{},
 	}
-	if err := s.store.CreateTenant(t, initialPolicy); err != nil {
+	if err := s.store.CreateTenant(ctx, t, initialPolicy); err != nil {
 		return model.Tenant{}, err
 	}
 	return t, nil
 }
 
 // IssueEnrollmentCode mints a single-use bootstrap code and challenge.
-func (s *Service) IssueEnrollmentCode(tenantID string) (EnrollmentCode, error) {
-	if _, err := s.store.GetTenant(tenantID); err != nil {
+func (s *Service) IssueEnrollmentCode(ctx context.Context, tenantID string) (EnrollmentCode, error) {
+	if _, err := s.store.GetTenant(ctx, tenantID); err != nil {
 		return EnrollmentCode{}, err
 	}
 	challenge := make([]byte, 32)
@@ -118,7 +118,7 @@ func (s *Service) IssueEnrollmentCode(tenantID string) (EnrollmentCode, error) {
 	}
 	stored := c
 	stored.Code = enrollmentCodeKey(code)
-	if err := s.store.PutEnrollmentCode(stored); err != nil {
+	if err := s.store.PutEnrollmentCode(ctx, stored); err != nil {
 		return EnrollmentCode{}, err
 	}
 	return c, nil
@@ -145,12 +145,12 @@ func EnrollmentProofMessage(pub signing.PublicKey, challenge []byte) []byte {
 
 // EnrollDevice validates the code and proof-of-possession, then registers the
 // device. Fail closed on any check.
-func (s *Service) EnrollDevice(req EnrollRequest) (model.Device, error) {
+func (s *Service) EnrollDevice(ctx context.Context, req EnrollRequest) (model.Device, error) {
 	if req.Code == "" || len(req.PublicKey.Bytes()) != 32 || len(req.Proof) == 0 {
 		return model.Device{}, fmt.Errorf("%w: enrollment credential", ErrInvalid)
 	}
 	codeKey := enrollmentCodeKey(req.Code)
-	c, err := s.store.GetEnrollmentCode(codeKey)
+	c, err := s.store.GetEnrollmentCode(ctx, codeKey)
 	if err != nil {
 		return model.Device{}, err
 	}
@@ -176,60 +176,60 @@ func (s *Service) EnrollDevice(req EnrollRequest) (model.Device, error) {
 		Posture:    req.Posture,
 		EnrolledAt: s.now(),
 	}
-	if err := s.store.ConsumeEnrollmentCode(codeKey, s.now(), d); err != nil {
+	if err := s.store.ConsumeEnrollmentCode(ctx, codeKey, s.now(), d); err != nil {
 		return model.Device{}, err
 	}
 	return d, nil
 }
 
 // RevokeDevice marks a device revoked (fail closed on subsequent authorisation).
-func (s *Service) RevokeDevice(id string) error {
-	return s.store.RevokeDevice(id, s.now())
+func (s *Service) RevokeDevice(ctx context.Context, id string) error {
+	return s.store.RevokeDevice(ctx, id, s.now())
 }
 
 // RegisterGateway adds or updates a data-plane gateway.
-func (s *Service) RegisterGateway(g model.Gateway) error {
+func (s *Service) RegisterGateway(ctx context.Context, g model.Gateway) error {
 	if err := validateGateway(g); err != nil {
 		return err
 	}
-	if _, err := s.store.GetTenant(g.TenantID); err != nil {
+	if _, err := s.store.GetTenant(ctx, g.TenantID); err != nil {
 		return err
 	}
 	g.LastSeen = s.now()
-	return s.store.UpsertGateway(g)
+	return s.store.UpsertGateway(ctx, g)
 }
 
 // PublishGatewayHealth updates coarse gateway health (§7 PublishGatewayHealth).
-func (s *Service) PublishGatewayHealth(id string, healthy bool, load float64) error {
+func (s *Service) PublishGatewayHealth(ctx context.Context, id string, healthy bool, load float64) error {
 	if id == "" || load < 0 || load > 1 {
 		return fmt.Errorf("%w: gateway health", ErrInvalid)
 	}
-	g, err := s.store.GetGateway(id)
+	g, err := s.store.GetGateway(ctx, id)
 	if err != nil {
 		return err
 	}
 	g.Healthy = healthy
 	g.Load = load
 	g.LastSeen = s.now()
-	return s.store.UpsertGateway(g)
+	return s.store.UpsertGateway(ctx, g)
 }
 
 // SetTenantPolicy replaces tenant policy and bumps its monotonic version so
 // endpoints get rollback-protected bundles.
-func (s *Service) SetTenantPolicy(tenantID string, p TenantPolicy) error {
+func (s *Service) SetTenantPolicy(ctx context.Context, tenantID string, p TenantPolicy) error {
 	if tenantID == "" {
 		return fmt.Errorf("%w: tenant id", ErrInvalid)
 	}
 	if err := validatePolicy(p); err != nil {
 		return err
 	}
-	return s.store.ReplaceTenantPolicy(tenantID, p)
+	return s.store.ReplaceTenantPolicy(ctx, tenantID, p)
 }
 
 // PolicyBundle compiles and signs the current endpoint policy for a tenant
 // (§7 FetchPolicyBundle): versioned, signed, rollback-protected, cacheable.
-func (s *Service) PolicyBundle(tenantID string) (model.SignedPolicyBundle, error) {
-	tp, err := s.store.GetTenantPolicy(tenantID)
+func (s *Service) PolicyBundle(ctx context.Context, tenantID string) (model.SignedPolicyBundle, error) {
+	tp, err := s.store.GetTenantPolicy(ctx, tenantID)
 	if err != nil {
 		return model.SignedPolicyBundle{}, err
 	}
@@ -263,16 +263,16 @@ type Decision struct {
 // Authorize decides whether a device may use a service class. It loads state,
 // builds the AuthzInput and delegates the decision to the PolicyEngine port
 // (OPA in production, StaticEngine in dev). Any engine error fails closed.
-func (s *Service) Authorize(deviceID, serviceClass string) Decision {
-	d, err := s.store.GetDevice(deviceID)
+func (s *Service) Authorize(ctx context.Context, deviceID, serviceClass string) Decision {
+	d, err := s.store.GetDevice(ctx, deviceID)
 	if err != nil {
 		return Decision{false, "unknown device"}
 	}
-	tp, err := s.store.GetTenantPolicy(d.TenantID)
+	tp, err := s.store.GetTenantPolicy(ctx, d.TenantID)
 	if err != nil {
 		return Decision{false, "no tenant policy"}
 	}
-	dec, err := s.engine.Authorize(context.Background(), AuthzInput{
+	dec, err := s.engine.Authorize(ctx, AuthzInput{
 		DeviceID:              d.ID,
 		DeviceRevoked:         d.Revoked,
 		TenantID:              d.TenantID,
@@ -289,8 +289,8 @@ func (s *Service) Authorize(deviceID, serviceClass string) Decision {
 
 // EligibleGateways returns healthy gateways matching audience and service class
 // for a tenant. Used by the route orchestrator.
-func (s *Service) EligibleGateways(tenantID, audience, serviceClass string) ([]model.Gateway, error) {
-	all, err := s.store.ListGateways(tenantID)
+func (s *Service) EligibleGateways(ctx context.Context, tenantID, audience, serviceClass string) ([]model.Gateway, error) {
+	all, err := s.store.ListGateways(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -308,8 +308,8 @@ func (s *Service) EligibleGateways(tenantID, audience, serviceClass string) ([]m
 }
 
 // TenantForDevice returns the tenant id a device belongs to.
-func (s *Service) TenantForDevice(deviceID string) (string, error) {
-	d, err := s.store.GetDevice(deviceID)
+func (s *Service) TenantForDevice(ctx context.Context, deviceID string) (string, error) {
+	d, err := s.store.GetDevice(ctx, deviceID)
 	if err != nil {
 		return "", err
 	}
@@ -421,3 +421,6 @@ func enrollmentCodeKey(code string) string {
 	digest := sha256.Sum256([]byte(code))
 	return base64.RawURLEncoding.EncodeToString(digest[:])
 }
+
+// Ping reports whether durable state is reachable. Readiness depends on it.
+func (s *Service) Ping(ctx context.Context) error { return s.store.Ping(ctx) }

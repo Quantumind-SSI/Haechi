@@ -5,6 +5,7 @@
 package routeorch
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -26,7 +27,7 @@ const maxRouteGateways = 16
 
 // GatewaySource supplies eligible gateways. Implemented by the control-api.
 type GatewaySource interface {
-	EligibleGateways(tenantID, audience, serviceClass string) ([]model.Gateway, error)
+	EligibleGateways(ctx context.Context, tenantID, audience, serviceClass string) ([]model.Gateway, error)
 }
 
 // Service produces signed route plans.
@@ -60,7 +61,7 @@ type ResolveRequest struct {
 }
 
 // Resolve returns a signed route plan of eligible gateways ordered by score.
-func (s *Service) Resolve(req ResolveRequest) (model.SignedRoutePlan, error) {
+func (s *Service) Resolve(ctx context.Context, req ResolveRequest) (model.SignedRoutePlan, error) {
 	pq := req.PQRequirement
 	if pq == "" {
 		pq = model.PQPreferred
@@ -68,7 +69,7 @@ func (s *Service) Resolve(req ResolveRequest) (model.SignedRoutePlan, error) {
 	if pq != model.PQOff && pq != model.PQPreferred && pq != model.PQRequired {
 		return model.SignedRoutePlan{}, ErrInvalidPQMode
 	}
-	gws, err := s.src.EligibleGateways(req.TenantID, req.Audience, req.ServiceClass)
+	gws, err := s.src.EligibleGateways(ctx, req.TenantID, req.Audience, req.ServiceClass)
 	if err != nil {
 		return model.SignedRoutePlan{}, err
 	}

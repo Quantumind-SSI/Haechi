@@ -8,19 +8,27 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	// Registers the "pgx" driver with database/sql. The adapter itself depends
+	// only on database/sql; the concrete driver is chosen here, at the
+	// composition root, and nowhere else.
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/QuantmindSSI/haechi/adapters/keycloak"
 	"github.com/QuantmindSSI/haechi/adapters/opa"
 	"github.com/QuantmindSSI/haechi/adapters/openbao"
+	"github.com/QuantmindSSI/haechi/adapters/postgres"
 	"github.com/QuantmindSSI/haechi/internal/httpapi"
 	"github.com/QuantmindSSI/haechi/internal/signing"
 	controlapi "github.com/QuantmindSSI/haechi/services/control-api"
@@ -57,7 +65,12 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	store := controlapi.NewMemoryStore()
+	store, closeStore, err := buildStore(ctx, environment)
+	if err != nil {
+		return err
+	}
+	defer closeStore()
+
 	svc := controlapi.NewService(store, engine, signer, keyID)
 	handler := httpapi.New(svc, verifier)
 	srv := &http.Server{
@@ -77,11 +90,86 @@ func run(ctx context.Context) error {
 	return nil
 }
 
+// Environments the control plane recognises. Anything else is refused rather
+// than guessed at, because the guess decides whether durable storage is
+// mandatory.
+var knownEnvironments = map[string]bool{
+	"development": true,
+	"staging":     true,
+	"production":  true,
+}
+
 func validateEnvironment(environment string) error {
-	if environment == "development" {
+	if knownEnvironments[environment] {
 		return nil
 	}
-	return fmt.Errorf("environment %q is blocked: this build has no durable store", environment)
+	return fmt.Errorf(
+		"unknown environment %q: expected development, staging or production",
+		environment,
+	)
+}
+
+// buildStore selects durable state.
+//
+// HAECHI_DATABASE_URL selects PostgreSQL. Outside development it is mandatory:
+// the in-memory store loses every tenant, device, policy and enrolment code on
+// restart, so serving real traffic from it would silently discard control-plane
+// state. Refusing to start is the safer failure.
+func buildStore(ctx context.Context, environment string) (controlapi.Store, func(), error) {
+	url := os.Getenv("HAECHI_DATABASE_URL")
+	if url == "" {
+		if environment != "development" {
+			return nil, nil, fmt.Errorf(
+				"HAECHI_DATABASE_URL is required in %s: the in-memory store does not survive a restart",
+				environment,
+			)
+		}
+		log.Printf("state: in-memory store (development only, not durable)")
+		return controlapi.NewMemoryStore(), func() {}, nil
+	}
+
+	db, err := sql.Open("pgx", url)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open database: %w", err)
+	}
+
+	// Bound the pool. An unbounded pool converts a slow database into
+	// exhausted connections and a control plane that cannot answer at all.
+	db.SetMaxOpenConns(envInt("HAECHI_DB_MAX_OPEN_CONNS", 10))
+	db.SetMaxIdleConns(envInt("HAECHI_DB_MAX_IDLE_CONNS", 5))
+	db.SetConnMaxLifetime(30 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
+
+	// Fail fast at startup rather than on the first request.
+	pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if err := db.PingContext(pingCtx); err != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+		return nil, nil, fmt.Errorf("database unreachable at startup: %w", err)
+	}
+
+	log.Printf("state: PostgreSQL (max open %d)", envInt("HAECHI_DB_MAX_OPEN_CONNS", 10))
+	closer := func() {
+		if err := db.Close(); err != nil {
+			log.Printf("closing database: %v", err)
+		}
+	}
+	return postgres.New(db), closer, nil
+}
+
+func envInt(key string, fallback int) int {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return fallback
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		log.Printf("%s=%q is not a positive integer, using %d", key, raw, fallback)
+		return fallback
+	}
+	return value
 }
 
 func buildSigner(ctx context.Context) (signing.Signer, string, error) {
