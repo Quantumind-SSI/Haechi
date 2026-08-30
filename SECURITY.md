@@ -6,7 +6,9 @@ Haechi is a pre-production engineering project. Only the latest revision of `mai
 
 ## Reporting A Vulnerability
 
-Use the repository's **Security** tab to open a private vulnerability report. Do not disclose vulnerabilities in public issues, pull requests, discussions, logs, or test fixtures.
+Use the repository's **Security** tab to open a private vulnerability report, or email <security@haechi.co.uk>. Do not disclose vulnerabilities in public issues, pull requests, discussions, logs, or test fixtures.
+
+Email to that address is forwarded, not delivered to a monitored mailbox with an on-call rotation. Expect acknowledgement within five working days. Do not send exploit details in an initial unencrypted message; describe the affected component and impact, and wait for a secure channel to be arranged.
 
 Include the affected revision, component, impact, reproduction steps, and any known mitigation. Remove credentials, personal data, private keys, capability tokens, and customer identifiers from the report.
 
