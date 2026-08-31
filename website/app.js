@@ -46,7 +46,9 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key !== "Tab") return;
 
-  const focusable = [menuToggle, ...navigation.querySelectorAll("a[href]")];
+  const focusable = [
+    ...(header?.querySelectorAll("a[href], button:not([disabled])") ?? []),
+  ];
   const first = focusable[0];
   const last = focusable.at(-1);
   if (event.shiftKey && document.activeElement === first) {
