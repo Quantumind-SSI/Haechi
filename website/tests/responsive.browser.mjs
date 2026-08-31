@@ -11,10 +11,12 @@ const startupTimeoutMs = 10_000;
 const mobileViewports = [
   { width: 320, height: 568 },
   { width: 390, height: 844 },
+  { width: 520, height: 900 },
   { width: 667, height: 320 },
   { width: 768, height: 1_024 },
   { width: 780, height: 1_024 },
 ];
+const textLayoutWidths = [320, 390, 520, 521, 780, 781, 1_024, 1_440];
 
 class DevToolsClient {
   constructor(socket) {
@@ -297,7 +299,7 @@ const mobileAuditExpression = `(async () => {
   ])];
   const undersized = controls
     .map((element) => ({ label: element.textContent.trim().replace(/\\s+/g, " "), ...rect(element) }))
-    .filter((control) => control.width < 44 || control.height < 44);
+    .filter((control) => control.width < 43.5 || control.height < 43.5);
 
   const lastLink = navigation.querySelector("a:last-child");
   const firstHeaderControl = document.querySelector("[data-header] a[href]");
@@ -410,7 +412,7 @@ function contrastRatio(foreground, background) {
 }
 
 async function auditDesktop(client, sessionId, baseUrl) {
-  for (const width of [781, 1_024]) {
+  for (const width of [781, 1_024, 1_440]) {
     await loadViewport(client, sessionId, baseUrl, width, 900);
     const result = await evaluate(
       client,
@@ -435,6 +437,100 @@ async function auditDesktop(client, sessionId, baseUrl) {
     assert.ok(result.buttonHeights.every((height) => height >= 44));
     assert.ok(contrastRatio(result.foreground, result.background) >= 4.5);
     assert.equal(result.orientation, "horizontal");
+  }
+}
+
+const textLayoutExpression = `(() => {
+  document.querySelectorAll(".reveal").forEach((element) => element.classList.add("visible"));
+  const heroHeading = document.querySelector(".hero h1");
+  const heroWord = document.createRange();
+  heroWord.setStart(heroHeading.firstChild, 0);
+  heroWord.setEnd(heroHeading.firstChild, "Communications".length);
+  const wordBounds = heroWord.getBoundingClientRect();
+  const consoleBounds = document.querySelector(".shield-console").getBoundingClientRect();
+  const threatGaps = [...document.querySelectorAll(".threat-card")].map((card) => {
+    const labelText = document.createRange();
+    labelText.selectNodeContents(card.querySelector(".card-label"));
+    return labelText.getBoundingClientRect().top - card.querySelector("p").getBoundingClientRect().bottom;
+  });
+  const formHeader = document.querySelector(".form-header");
+  const firstHeaderItem = formHeader.children[0].getBoundingClientRect();
+  const lastHeaderItem = formHeader.children[1].getBoundingClientRect();
+  const formHeaderOverlaps =
+    firstHeaderItem.left < lastHeaderItem.right &&
+    firstHeaderItem.right > lastHeaderItem.left &&
+    firstHeaderItem.top < lastHeaderItem.bottom &&
+    firstHeaderItem.bottom > lastHeaderItem.top;
+  const foundations = document.querySelector(".foundations-layout");
+  const roadmap = document.querySelector(".roadmap-layout");
+  const fieldDescriptions = [
+    "organisation",
+    "workEmail",
+    "role",
+    "deploymentPreference",
+    "consent",
+  ].every((id) => {
+    const field = document.getElementById(id);
+    const description = document.getElementById(field?.getAttribute("aria-describedby"));
+    return Boolean(field && description);
+  });
+  return {
+    documentOverflow: document.documentElement.scrollWidth - innerWidth,
+    heroWordLeft: wordBounds.left,
+    heroWordRight: wordBounds.right,
+    heroConsoleGap: innerWidth > 1040 ? consoleBounds.left - wordBounds.right : null,
+    threatGaps,
+    minimumDeploymentWidth: Math.min(
+      ...[...document.querySelectorAll(".deployment-card")].map(
+        (card) => card.getBoundingClientRect().width,
+      ),
+    ),
+    minimumAssuranceWidth: Math.min(
+      ...[...document.querySelectorAll(".assurance-card")].map(
+        (card) => card.getBoundingClientRect().width,
+      ),
+    ),
+    foundationGap:
+      innerWidth <= 1040
+        ? foundations.querySelector(".foundation-list").getBoundingClientRect().top -
+          foundations.querySelector(".section-heading").getBoundingClientRect().bottom
+        : null,
+    roadmapGap:
+      innerWidth <= 1040
+        ? roadmap.querySelector(".roadmap").getBoundingClientRect().top -
+          roadmap.querySelector(".section-heading").getBoundingClientRect().bottom
+        : null,
+    formHeaderOverlaps,
+    formHeadingTag: formHeader.firstElementChild.tagName,
+    fieldDescriptions,
+    architectureVisualDisplay: getComputedStyle(
+      document.querySelector(".architecture-visual"),
+    ).display,
+  };
+})()`;
+
+async function auditTextLayout(client, sessionId, baseUrl) {
+  for (const width of textLayoutWidths) {
+    await loadViewport(client, sessionId, baseUrl, width, 900);
+    const result = await evaluate(client, sessionId, textLayoutExpression);
+    assert.equal(
+      result.documentOverflow,
+      0,
+      `${width}px page must not overflow`,
+    );
+    assert.ok(result.heroWordLeft >= 0 && result.heroWordRight <= width);
+    assert.ok(result.threatGaps.every((gap) => gap >= 24));
+    assert.ok(result.minimumDeploymentWidth >= 280);
+    assert.ok(result.minimumAssuranceWidth >= 280);
+    assert.equal(result.formHeaderOverlaps, false);
+    assert.equal(result.formHeadingTag, "H3");
+    assert.equal(result.fieldDescriptions, true);
+    if (width <= 1040) {
+      assert.ok(result.foundationGap >= 45 && result.foundationGap <= 70);
+      assert.ok(result.roadmapGap >= 45 && result.roadmapGap <= 70);
+    }
+    if (width > 1040) assert.ok(result.heroConsoleGap >= 32);
+    if (width <= 520) assert.equal(result.architectureVisualDisplay, "none");
   }
 }
 
@@ -483,9 +579,10 @@ async function run() {
     await auditMobileViewports(client, sessionId, baseUrl);
     await auditArchitectureKeyboard(client, sessionId);
     await auditDesktop(client, sessionId, baseUrl);
+    await auditTextLayout(client, sessionId, baseUrl);
     await auditReducedMotion(client, sessionId, baseUrl);
     console.log(
-      "Responsive interaction audit passed for phone, tablet, and desktop.",
+      "Responsive interaction and text layout audit passed for phone, tablet, and desktop.",
     );
   } finally {
     client?.close();

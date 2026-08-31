@@ -36,9 +36,11 @@ export HAECHI_TEST_DATABASE_URL="postgresql://postgres@127.0.0.1:5432/haechi_pil
 npm test
 ```
 
-The responsive interaction audit launches headless Chrome at phone, tablet,
-short-landscape and desktop viewports. Set `CHROME_PATH` when Chrome or Chromium
-is not installed in one of the standard macOS or Linux locations.
+The responsive interaction and text-layout audit launches headless Chrome at
+phone, tablet, short-landscape, breakpoint and desktop viewports. It checks
+navigation behavior, clipping, text overlap, content measure and grid spacing.
+Set `CHROME_PATH` when Chrome or Chromium is not installed in one of the
+standard macOS or Linux locations.
 
 ## Build
 
