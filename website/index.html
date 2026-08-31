@@ -260,6 +260,7 @@
               aria-label="Architecture layers"
             >
               <button
+                id="architecture-tab-endpoint"
                 type="button"
                 role="tab"
                 aria-selected="true"
@@ -269,37 +270,45 @@
                 <span>01</span> Endpoint
               </button>
               <button
+                id="architecture-tab-capability"
                 type="button"
                 role="tab"
                 aria-selected="false"
                 aria-controls="architecture-detail"
+                tabindex="-1"
                 data-stage="capability"
               >
                 <span>02</span> Access
               </button>
               <button
+                id="architecture-tab-control"
                 type="button"
                 role="tab"
                 aria-selected="false"
                 aria-controls="architecture-detail"
+                tabindex="-1"
                 data-stage="control"
               >
                 <span>03</span> Control
               </button>
               <button
+                id="architecture-tab-gateway"
                 type="button"
                 role="tab"
                 aria-selected="false"
                 aria-controls="architecture-detail"
+                tabindex="-1"
                 data-stage="gateway"
               >
                 <span>04</span> Gateway
               </button>
               <button
+                id="architecture-tab-intelligence"
                 type="button"
                 role="tab"
                 aria-selected="false"
                 aria-controls="architecture-detail"
+                tabindex="-1"
                 data-stage="intelligence"
               >
                 <span>05</span> Intelligence
@@ -310,6 +319,7 @@
               class="architecture-content"
               id="architecture-detail"
               role="tabpanel"
+              aria-labelledby="architecture-tab-endpoint"
               aria-live="polite"
             >
               <div>

@@ -43,6 +43,7 @@ body {
 
 body.menu-open {
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 button,
@@ -54,7 +55,13 @@ textarea {
 
 button,
 a {
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(255, 106, 50, 0.24);
+  touch-action: manipulation;
+}
+
+:where(a, button):focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 3px;
 }
 
 a {
@@ -109,10 +116,12 @@ img {
     backdrop-filter 180ms ease;
 }
 
-.site-header.scrolled {
+.site-header.scrolled,
+.site-header.menu-active {
   background: rgba(5, 5, 6, 0.84);
   border-color: var(--line);
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .header-inner {
@@ -146,7 +155,6 @@ img {
   transition: color 160ms ease;
 }
 
-.primary-nav > a:not(.button):hover,
 .primary-nav > a:not(.button):focus-visible {
   color: var(--white);
 }
@@ -165,7 +173,7 @@ img {
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   background: var(--accent);
-  color: #fff;
+  color: var(--black);
   text-decoration: none;
   font-size: 14px;
   font-weight: 750;
@@ -176,15 +184,33 @@ img {
     transform 160ms ease;
 }
 
-.button:hover,
 .button:focus-visible {
   background: var(--accent-bright);
   border-color: var(--accent-bright);
+  outline-color: var(--white);
   transform: translateY(-1px);
 }
 
+.button:active {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  transform: translateY(1px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .primary-nav > a:not(.button):hover {
+    color: var(--white);
+  }
+
+  .button:hover {
+    background: var(--accent-bright);
+    border-color: var(--accent-bright);
+    transform: translateY(-1px);
+  }
+}
+
 .button-small {
-  min-height: 40px;
+  min-height: 44px;
   padding-inline: 16px;
 }
 
@@ -201,6 +227,17 @@ img {
 
 .text-link span {
   color: var(--accent);
+}
+
+.text-link:focus-visible,
+.text-link:active {
+  text-decoration-color: var(--accent-bright);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .text-link:hover {
+    text-decoration-color: var(--accent-bright);
+  }
 }
 
 .eyebrow {
@@ -700,6 +737,21 @@ img {
 .architecture-tabs button[aria-selected="true"] span {
   color: var(--accent-bright);
 }
+.architecture-tabs button:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+.architecture-tabs button:active:not([aria-selected="true"]) {
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .architecture-tabs button:hover:not([aria-selected="true"]) {
+    color: var(--white);
+    background: rgba(255, 255, 255, 0.04);
+  }
+}
 .architecture-content {
   min-height: 420px;
   display: grid;
@@ -1040,14 +1092,17 @@ img {
 }
 .consent {
   display: grid;
-  grid-template-columns: 18px 1fr;
+  grid-template-columns: 20px 1fr;
   gap: 10px;
   align-items: start;
+  min-height: 44px;
   color: var(--muted);
   font-size: 12px;
 }
 .consent input {
-  margin-top: 4px;
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
   accent-color: var(--accent);
 }
 .consent a {
@@ -1109,8 +1164,14 @@ img {
   font-size: 13px;
   text-decoration: none;
 }
-.footer-links a:hover {
+.footer-links a:focus-visible {
   color: var(--white);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .footer-links a:hover {
+    color: var(--white);
+  }
 }
 .footer-bottom {
   display: flex;
@@ -1230,13 +1291,19 @@ img {
     min-height: 68px;
   }
   .menu-toggle {
-    width: 42px;
-    height: 42px;
+    width: 48px;
+    height: 48px;
     display: grid;
     place-content: center;
     gap: 6px;
     border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
     background: var(--panel);
+    color: var(--white);
+    cursor: pointer;
+    transition:
+      background 160ms ease,
+      border-color 160ms ease;
   }
   .menu-toggle span:not(.sr-only) {
     width: 18px;
@@ -1244,6 +1311,11 @@ img {
     display: block;
     background: var(--white);
     transition: transform 160ms ease;
+  }
+  .menu-toggle:focus-visible,
+  .menu-toggle[aria-expanded="true"] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
   }
   .menu-toggle[aria-expanded="true"] span:nth-last-child(2) {
     transform: translateY(3.5px) rotate(45deg);
@@ -1253,25 +1325,47 @@ img {
   }
   .primary-nav {
     position: fixed;
-    inset: 68px 0 0;
+    inset: 68px 0 auto;
+    width: 100%;
+    height: calc(100vh - 68px);
+    height: calc(100dvh - 68px);
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0;
-    padding: 28px var(--shell);
+    padding-top: 28px;
+    padding-right: max(
+      14px,
+      calc((100vw - 680px) / 2),
+      env(safe-area-inset-right)
+    );
+    padding-bottom: max(28px, env(safe-area-inset-bottom));
+    padding-left: max(
+      14px,
+      calc((100vw - 680px) / 2),
+      env(safe-area-inset-left)
+    );
     background: rgba(5, 5, 6, 0.98);
-    transform: translateX(100%);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    transform: translate3d(100%, 0, 0);
     visibility: hidden;
+    will-change: transform;
     transition:
-      transform 200ms ease,
-      visibility 200ms;
+      transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 240ms;
   }
   .primary-nav.open {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
     visibility: visible;
+    transition-delay: 0s;
   }
   .primary-nav > a:not(.button) {
-    padding: 16px 0;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 14px 0;
     border-bottom: 1px solid var(--line);
     font-size: 18px;
   }
@@ -1369,6 +1463,19 @@ img {
   }
 }
 
+@media (hover: none), (pointer: coarse) {
+  .brand,
+  .text-link {
+    min-height: 44px;
+  }
+
+  .footer-links a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
+
 @media (max-width: 520px) {
   .hero h1 {
     font-size: 47px;
@@ -1427,6 +1534,7 @@ img {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    transition-delay: 0s !important;
     transition-duration: 0.01ms !important;
   }
   .js .reveal {
