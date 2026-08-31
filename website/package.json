@@ -8,6 +8,7 @@
     "start": "node server.mjs",
     "dev": "node --watch server.mjs",
     "test": "node scripts/check-brand-palette.mjs && node --test --test-timeout=60000 && node tests/smoke.mjs",
+    "test:responsive": "node --experimental-websocket tests/responsive.browser.mjs",
     "migrate": "node migrate.mjs",
     "build": "node scripts/build.mjs",
     "preview": "node server.mjs --prod",
