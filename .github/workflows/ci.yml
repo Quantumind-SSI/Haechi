@@ -126,6 +126,7 @@ jobs:
       - name: Test and build
         run: |
           npm test
+          npm --prefix website run test:responsive
           npm run build
 
       - name: Build the Cloudflare Pages output
