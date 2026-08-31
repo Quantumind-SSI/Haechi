@@ -3,27 +3,61 @@ document.documentElement.classList.add("js");
 const header = document.querySelector("[data-header]");
 const menuToggle = document.querySelector("[data-menu-toggle]");
 const navigation = document.querySelector("[data-navigation]");
+const mobileNavigation = window.matchMedia("(max-width: 780px)");
+const pageRegions = [
+  document.querySelector("main"),
+  document.querySelector(".site-footer"),
+].filter(Boolean);
 
-function closeMenu() {
+function setMenuState(isOpen, restoreFocus = false) {
   if (!menuToggle || !navigation) return;
-  menuToggle.setAttribute("aria-expanded", "false");
-  navigation.classList.remove("open");
-  document.body.classList.remove("menu-open");
+  const openOnMobile = isOpen && mobileNavigation.matches;
+  menuToggle.setAttribute("aria-expanded", String(openOnMobile));
+  navigation.classList.toggle("open", openOnMobile);
+  document.body.classList.toggle("menu-open", openOnMobile);
+  header?.classList.toggle("menu-active", openOnMobile);
+  pageRegions.forEach((region) => {
+    region.inert = openOnMobile;
+  });
+  if (!openOnMobile && restoreFocus) menuToggle.focus({ preventScroll: true });
+}
+
+function closeMenu(restoreFocus = false) {
+  const wasOpen = menuToggle?.getAttribute("aria-expanded") === "true";
+  setMenuState(false, restoreFocus && wasOpen);
 }
 
 menuToggle?.addEventListener("click", () => {
   const willOpen = menuToggle.getAttribute("aria-expanded") !== "true";
-  menuToggle.setAttribute("aria-expanded", String(willOpen));
-  navigation?.classList.toggle("open", willOpen);
-  document.body.classList.toggle("menu-open", willOpen);
+  setMenuState(willOpen);
 });
 
 navigation
   ?.querySelectorAll("a")
-  .forEach((link) => link.addEventListener("click", closeMenu));
-window.addEventListener("resize", () => {
-  if (window.innerWidth > 780) closeMenu();
+  .forEach((link) => link.addEventListener("click", () => closeMenu(true)));
+
+document.addEventListener("keydown", (event) => {
+  if (menuToggle?.getAttribute("aria-expanded") !== "true" || !navigation)
+    return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeMenu(true);
+    return;
+  }
+  if (event.key !== "Tab") return;
+
+  const focusable = [menuToggle, ...navigation.querySelectorAll("a[href]")];
+  const first = focusable[0];
+  const last = focusable.at(-1);
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 });
+mobileNavigation.addEventListener("change", () => closeMenu());
 
 function updateHeader() {
   header?.classList.toggle("scrolled", window.scrollY > 24);
@@ -86,6 +120,8 @@ const architecture = {
 };
 
 const architectureTabs = [...document.querySelectorAll("[data-stage]")];
+const architectureTablist = document.querySelector("[role='tablist']");
+const architecturePanel = document.querySelector("[role='tabpanel']");
 const architectureLabel = document.querySelector("[data-architecture-label]");
 const architectureTitle = document.querySelector("[data-architecture-title]");
 const architectureCopy = document.querySelector("[data-architecture-copy]");
@@ -96,9 +132,16 @@ function selectArchitecture(stageName) {
   const selected = architecture[stageName];
   if (!selected) return;
 
-  architectureTabs.forEach((tab) =>
-    tab.setAttribute("aria-selected", String(tab.dataset.stage === stageName)),
-  );
+  let selectedTab;
+  architectureTabs.forEach((tab) => {
+    const isSelected = tab.dataset.stage === stageName;
+    tab.setAttribute("aria-selected", String(isSelected));
+    tab.tabIndex = isSelected ? 0 : -1;
+    if (isSelected) selectedTab = tab;
+  });
+  if (architecturePanel && selectedTab) {
+    architecturePanel.setAttribute("aria-labelledby", selectedTab.id);
+  }
   if (architectureLabel) architectureLabel.textContent = selected.label;
   if (architectureTitle) architectureTitle.textContent = selected.title;
   if (architectureCopy) architectureCopy.textContent = selected.copy;
@@ -123,20 +166,35 @@ function selectArchitecture(stageName) {
 architectureTabs.forEach((tab, index) => {
   tab.addEventListener("click", () => selectArchitecture(tab.dataset.stage));
   tab.addEventListener("keydown", (event) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const direction = {
+      ArrowLeft: -1,
+      ArrowUp: -1,
+      ArrowRight: 1,
+      ArrowDown: 1,
+    }[event.key];
+    if (direction === undefined && !["Home", "End"].includes(event.key)) return;
     event.preventDefault();
     let nextIndex = index;
-    if (event.key === "ArrowLeft")
+    if (direction !== undefined) {
       nextIndex =
-        (index - 1 + architectureTabs.length) % architectureTabs.length;
-    if (event.key === "ArrowRight")
-      nextIndex = (index + 1) % architectureTabs.length;
+        (index + direction + architectureTabs.length) % architectureTabs.length;
+    }
     if (event.key === "Home") nextIndex = 0;
     if (event.key === "End") nextIndex = architectureTabs.length - 1;
     architectureTabs[nextIndex].focus();
     selectArchitecture(architectureTabs[nextIndex].dataset.stage);
   });
 });
+
+function updateTabOrientation() {
+  architectureTablist?.setAttribute(
+    "aria-orientation",
+    mobileNavigation.matches ? "vertical" : "horizontal",
+  );
+}
+
+updateTabOrientation();
+mobileNavigation.addEventListener("change", updateTabOrientation);
 
 const revealElements = document.querySelectorAll(".reveal");
 if ("IntersectionObserver" in window) {
