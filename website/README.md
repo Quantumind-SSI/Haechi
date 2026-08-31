@@ -25,6 +25,7 @@ file storage and serves the form same-origin, so no Azure resources are needed.
 
 ```bash
 npm test
+npm run test:responsive
 ```
 
 The PostgreSQL adapter tests are skipped unless a disposable database is
@@ -34,6 +35,10 @@ available. To run them:
 export HAECHI_TEST_DATABASE_URL="postgresql://postgres@127.0.0.1:5432/haechi_pilot"
 npm test
 ```
+
+The responsive interaction audit launches headless Chrome at phone, tablet,
+short-landscape and desktop viewports. Set `CHROME_PATH` when Chrome or Chromium
+is not installed in one of the standard macOS or Linux locations.
 
 ## Build
 
