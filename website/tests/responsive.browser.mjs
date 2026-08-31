@@ -300,9 +300,10 @@ const mobileAuditExpression = `(async () => {
     .filter((control) => control.width < 44 || control.height < 44);
 
   const lastLink = navigation.querySelector("a:last-child");
+  const firstHeaderControl = document.querySelector("[data-header] a[href]");
   lastLink.focus();
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
-  const focusTrapped = document.activeElement === toggle;
+  const focusTrapped = document.activeElement === firstHeaderControl;
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
   navigation.getAnimations().forEach((animation) => animation.finish());
 
