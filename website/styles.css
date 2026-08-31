@@ -296,15 +296,15 @@ img {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1.06fr) minmax(410px, 0.94fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(410px, 0.85fr);
   align-items: center;
-  gap: 76px;
+  gap: 64px;
 }
 
 .hero h1 {
   max-width: 760px;
   margin: 0;
-  font-size: clamp(54px, 7vw, 94px);
+  font-size: clamp(54px, 7vw, 86px);
   line-height: 0.96;
   letter-spacing: -0.055em;
 }
@@ -557,10 +557,14 @@ img {
   line-height: 1.05;
   letter-spacing: -0.045em;
 }
-.section-heading > p:last-child,
-.split-heading > p {
+.section-heading > p:not(.eyebrow) {
+  max-width: 66ch;
+  margin: 24px 0 0;
   color: var(--muted);
   font-size: 18px;
+}
+.section-heading > p:not(.eyebrow) + p {
+  margin-top: 16px;
 }
 
 .split-heading {
@@ -571,6 +575,8 @@ img {
   gap: 80px;
 }
 .split-heading > p {
+  max-width: 48ch;
+  justify-self: end;
   margin: 0;
 }
 
@@ -585,6 +591,8 @@ img {
 .threat-card {
   position: relative;
   min-height: 410px;
+  display: flex;
+  flex-direction: column;
   padding: 34px;
   border-right: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent);
@@ -639,36 +647,38 @@ img {
 .threat-card h3 {
   margin: 0 0 14px;
   font-size: 24px;
+  line-height: 1.15;
   letter-spacing: -0.025em;
 }
 .threat-card p {
+  max-width: 58ch;
   margin: 0;
   color: var(--muted);
   font-size: 15px;
+  line-height: 1.65;
 }
 .card-label {
-  position: absolute;
-  bottom: 30px;
-  left: 34px;
+  display: block;
+  margin-top: auto;
+  padding-top: 28px;
   color: var(--accent-bright);
   font-family: ui-monospace, monospace;
   font-size: 11px;
+  line-height: 1.4;
   text-transform: uppercase;
 }
 
 .pillars-section {
   background: var(--black);
 }
-.section-kicker {
-  display: flex;
-  justify-content: space-between;
-  padding-bottom: 20px;
+.pillars-heading {
+  max-width: none;
+  margin-bottom: 0;
+  padding-bottom: 34px;
   border-bottom: 1px solid var(--line-strong);
-  color: var(--muted);
-  font-family: ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+}
+.pillars-heading h2 {
+  max-width: 700px;
 }
 .pillar-row {
   display: grid;
@@ -690,8 +700,10 @@ img {
   letter-spacing: -0.035em;
 }
 .pillar-row > p {
+  max-width: 56ch;
   margin: 28px 0 0;
   color: var(--muted);
+  line-height: 1.7;
 }
 
 .architecture-section {
@@ -725,7 +737,7 @@ img {
 .architecture-tabs button span {
   display: block;
   margin-bottom: 3px;
-  color: #6f6e69;
+  color: var(--muted);
   font-family: ui-monospace, monospace;
   font-size: 10px;
 }
@@ -768,8 +780,10 @@ img {
   letter-spacing: -0.04em;
 }
 .architecture-content p:not(.eyebrow) {
+  max-width: 62ch;
   color: var(--muted);
   font-size: 17px;
+  line-height: 1.65;
 }
 .feature-list {
   align-self: center;
@@ -804,7 +818,7 @@ img {
   gap: 10px;
 }
 .layer-map span {
-  color: #73726e;
+  color: var(--muted);
   font-family: ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 0.04em;
@@ -852,8 +866,7 @@ img {
 .assurance-section .eyebrow {
   color: #c93900;
 }
-.assurance-section .section-heading > p:last-child,
-.assurance-section .split-heading > p {
+.assurance-section .section-heading > p:not(.eyebrow) {
   color: #5d5c58;
 }
 .assurance-grid {
@@ -894,6 +907,8 @@ img {
 }
 .deployment-card {
   min-height: 430px;
+  display: flex;
+  flex-direction: column;
   padding: 34px;
   border: 1px solid var(--line);
   background: var(--panel);
@@ -912,12 +927,15 @@ img {
 .deployment-card h3 {
   margin: 74px 0 18px;
   font-size: 27px;
+  line-height: 1.15;
 }
 .deployment-card > p:not(.deployment-tag) {
+  margin: 0;
   color: var(--muted);
+  line-height: 1.65;
 }
 .deployment-card ul {
-  margin: 28px 0 0;
+  margin: auto 0 0;
   padding: 22px 0 0;
   border-top: 1px solid var(--line);
   list-style: none;
@@ -996,8 +1014,10 @@ img {
   align-items: start;
 }
 .pilot-copy > p:not(.eyebrow) {
+  max-width: 58ch;
   color: var(--muted);
   font-size: 18px;
+  line-height: 1.65;
 }
 .pilot-points {
   margin-top: 44px;
@@ -1032,6 +1052,11 @@ img {
 .form-header {
   margin: 0 -34px 30px;
 }
+.form-header h3 {
+  margin: 0;
+  color: var(--white);
+  font: inherit;
+}
 .field {
   margin-bottom: 20px;
 }
@@ -1048,7 +1073,7 @@ img {
   font-size: 13px;
 }
 .field label span {
-  color: #777671;
+  color: var(--muted);
 }
 .field input,
 .field select,
@@ -1179,7 +1204,7 @@ img {
   margin-top: 55px;
   padding-top: 20px;
   border-top: 1px solid var(--line);
-  color: #777671;
+  color: var(--muted);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1196,11 +1221,13 @@ img {
 .legal-document h1 {
   margin: 0 0 24px;
   font-size: clamp(42px, 7vw, 76px);
+  line-height: 1.05;
   letter-spacing: -0.05em;
 }
 .legal-document h2 {
   margin-top: 46px;
   font-size: 25px;
+  line-height: 1.2;
 }
 .legal-document p,
 .legal-document li {
@@ -1243,6 +1270,9 @@ img {
   .hero {
     padding-top: 145px;
   }
+  .hero h1 {
+    font-size: clamp(47px, 7vw, 72px);
+  }
   .audience-strip {
     margin-top: 70px;
     grid-template-columns: repeat(2, 1fr);
@@ -1280,6 +1310,37 @@ img {
   .pilot-layout {
     grid-template-columns: 1fr;
     gap: 55px;
+  }
+  .foundations-layout > .section-heading,
+  .roadmap-layout > .section-heading {
+    margin-bottom: 0;
+  }
+  .pilot-form {
+    width: min(100%, 720px);
+  }
+}
+
+@media (max-width: 960px) {
+  .deployment-grid {
+    grid-template-columns: 1fr;
+  }
+  .deployment-card {
+    min-height: auto;
+  }
+  .deployment-card h3 {
+    margin-top: 42px;
+  }
+}
+
+@media (max-width: 680px) {
+  .assurance-grid {
+    grid-template-columns: 1fr;
+  }
+  .assurance-card {
+    min-height: 240px;
+  }
+  .assurance-card h3 {
+    margin-top: 54px;
   }
 }
 
@@ -1376,9 +1437,6 @@ img {
     min-height: auto;
     padding-top: 125px;
   }
-  .hero h1 {
-    font-size: clamp(49px, 15vw, 72px);
-  }
   .hero-actions {
     align-items: flex-start;
     flex-direction: column;
@@ -1444,15 +1502,6 @@ img {
   .layer-map {
     min-width: 580px;
   }
-  .deployment-grid {
-    grid-template-columns: 1fr;
-  }
-  .deployment-card {
-    min-height: auto;
-  }
-  .deployment-card h3 {
-    margin-top: 42px;
-  }
   .footer-grid {
     grid-template-columns: 1fr;
     gap: 44px;
@@ -1478,7 +1527,7 @@ img {
 
 @media (max-width: 520px) {
   .hero h1 {
-    font-size: 47px;
+    font-size: clamp(40px, 12vw, 47px);
   }
   .hero-lede {
     font-size: 17px;
@@ -1493,14 +1542,8 @@ img {
   .pillar-row h3 {
     font-size: 27px;
   }
-  .assurance-grid {
-    grid-template-columns: 1fr;
-  }
-  .assurance-card {
-    min-height: 240px;
-  }
-  .assurance-card h3 {
-    margin-top: 54px;
+  .architecture-visual {
+    display: none;
   }
   .foundation-list div {
     flex-direction: column;
@@ -1521,7 +1564,24 @@ img {
     padding-inline: 20px;
   }
   .footer-links {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .console-topbar {
+    gap: 10px;
+    padding-inline: 14px;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+  }
+  .form-header {
+    min-height: 72px;
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding-block: 13px;
   }
 }
 

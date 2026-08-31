@@ -188,9 +188,9 @@
 
       <section class="section pillars-section">
         <div class="shell">
-          <div class="section-kicker reveal">
-            <span>One integrated platform</span>
-            <span>Three engineering pillars</span>
+          <div class="section-heading pillars-heading reveal">
+            <p class="eyebrow">One integrated platform</p>
+            <h2>Three engineering pillars.</h2>
           </div>
           <div class="pillar-row reveal">
             <div class="pillar-number">01</div>
@@ -607,11 +607,12 @@
             class="pilot-form reveal"
             action="/api/pilot"
             method="post"
+            aria-labelledby="pilot-form-title"
             data-pilot-form
             novalidate
           >
             <div class="form-header">
-              <span>Request a pilot</span>
+              <h3 id="pilot-form-title">Request a pilot</h3>
               <span>Commercial in confidence</span>
             </div>
             <div class="field">
@@ -620,10 +621,14 @@
                 id="organisation"
                 name="organisation"
                 autocomplete="organization"
+                aria-describedby="organisation-error"
                 maxlength="120"
                 required
               />
-              <small data-error-for="organisation"></small>
+              <small
+                id="organisation-error"
+                data-error-for="organisation"
+              ></small>
             </div>
             <div class="field-row">
               <div class="field">
@@ -633,32 +638,43 @@
                   name="workEmail"
                   type="email"
                   autocomplete="email"
+                  aria-describedby="work-email-error"
                   maxlength="180"
                   required
                 />
-                <small data-error-for="workEmail"></small>
+                <small id="work-email-error" data-error-for="workEmail"></small>
               </div>
               <div class="field">
-                <label for="role">Role</label>
+                <label for="role">Role <span>Optional</span></label>
                 <input
                   id="role"
                   name="role"
                   autocomplete="organization-title"
+                  aria-describedby="role-error"
                   maxlength="100"
                 />
-                <small data-error-for="role"></small>
+                <small id="role-error" data-error-for="role"></small>
               </div>
             </div>
             <div class="field">
-              <label for="deployment">Preferred deployment</label>
-              <select id="deployment" name="deployment" required>
+              <label for="deploymentPreference">Preferred deployment</label>
+              <select
+                id="deploymentPreference"
+                name="deployment"
+                aria-describedby="deployment-error"
+                required
+              >
                 <option value="">Choose one</option>
-                <option value="saas">Managed SaaS</option>
-                <option value="dedicated">Dedicated enterprise / CNI</option>
-                <option value="restricted">Restricted or disconnected</option>
+                <option value="saas">Managed multi-tenant SaaS</option>
+                <option value="dedicated">
+                  Dedicated enterprise &amp; CNI
+                </option>
+                <option value="restricted">
+                  Restricted disconnected network
+                </option>
                 <option value="undecided">Not yet decided</option>
               </select>
-              <small data-error-for="deployment"></small>
+              <small id="deployment-error" data-error-for="deployment"></small>
             </div>
             <div class="field">
               <label for="message"
@@ -681,14 +697,24 @@
               />
             </div>
             <label class="consent">
-              <input type="checkbox" name="consent" required />
+              <input
+                id="consent"
+                type="checkbox"
+                name="consent"
+                aria-describedby="consent-error"
+                required
+              />
               <span
                 >I consent to Quantumind SSI using these details to respond to
                 this request. See the
                 <a href="/privacy">privacy notice</a>.</span
               >
             </label>
-            <small class="consent-error" data-error-for="consent"></small>
+            <small
+              id="consent-error"
+              class="consent-error"
+              data-error-for="consent"
+            ></small>
             <button class="button submit-button" type="submit">
               Submit pilot request <span aria-hidden="true">→</span>
             </button>
