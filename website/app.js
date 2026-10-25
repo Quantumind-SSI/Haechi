@@ -1,4 +1,12 @@
+import { animate, stagger } from "motion";
+
 document.documentElement.classList.add("js");
+
+// Page transition fade-in on load using Motion
+if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+  document.documentElement.style.opacity = "0";
+  animate(document.documentElement, { opacity: [0, 1] }, { duration: 0.35, easing: [0.22, 1, 0.36, 1] });
+}
 
 const header = document.querySelector("[data-header]");
 const menuToggle = document.querySelector("[data-menu-toggle]");
@@ -118,6 +126,20 @@ function selectArchitecture(stageName) {
   layerLabels.forEach((label, index) =>
     label.classList.toggle("active", index === activeIndex),
   );
+
+  // Motion transition for content
+  if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+    const contentEl = document.querySelector('.architecture-content');
+    if (contentEl) {
+      animate(contentEl, { opacity: [0.6, 1], y: [8, 0] }, { duration: 0.25, easing: [0.22, 1, 0.36, 1] });
+    }
+    const pointsEl = architecturePoints;
+    if (pointsEl) {
+      [...pointsEl.children].forEach((li, i) => {
+        animate(li, { opacity: [0, 1], y: [6, 0] }, { duration: 0.25, delay: i * 0.05, easing: [0.22, 1, 0.36, 1] });
+      });
+    }
+  }
 }
 
 architectureTabs.forEach((tab, index) => {
@@ -144,7 +166,11 @@ if ("IntersectionObserver" in window) {
     (entries) => {
       entries.forEach((entry) => {
         if (!entry.isIntersecting) return;
+        const el = entry.target;
         entry.target.classList.add("visible");
+        if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+          animate(el, { opacity: [0, 1], y: [18, 0] }, { duration: 0.35, easing: [0.22, 1, 0.36, 1] });
+        }
         observer.unobserve(entry.target);
       });
     },
@@ -232,3 +258,50 @@ pilotForm?.addEventListener("submit", async (event) => {
 document.querySelectorAll("[data-year]").forEach((element) => {
   element.textContent = String(new Date().getFullYear());
 });
+
+// Motion brand tokens
+const motionTokens = {
+  duration: { fast: 150, base: 250, medium: 350, slow: 500 },
+  easing: { standard: [0.22, 1, 0.36, 1], entrance: [0.16, 1, 0.3, 1] },
+  stagger: 80
+};
+
+// Hero entrance
+const heroCopy = document.querySelector(".hero-copy");
+if (heroCopy && window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+  const copyChildren = [...heroCopy.children];
+  copyChildren.forEach((el, i) => {
+    animate(el, {
+      opacity: [0, 1],
+      y: [18, 0],
+      filter: ["blur(4px)", "blur(0px)"]
+    }, {
+      duration: motionTokens.duration.slow / 1000,
+      delay: i * motionTokens.stagger / 1000,
+      easing: motionTokens.easing.entrance
+    });
+  });
+}
+
+// Animated reveal observer using Motion
+const revealEls = document.querySelectorAll(".reveal");
+if ("IntersectionObserver" in window) {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        if (!el.dataset.motioned) {
+          el.dataset.motioned = "true";
+          if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+            animate(el, { opacity: [0, 1], y: [18, 0] }, { duration: 0.35, easing: motionTokens.easing.standard });
+          }
+          el.classList.add("visible");
+          io.unobserve(el);
+        }
+      }
+    });
+  }, { threshold: 0.1, rootMargin: "0px 0px -10% 0px" });
+  revealEls.forEach(el => io.observe(el));
+} else {
+  revealEls.forEach(el => el.classList.add("visible"));
+}
