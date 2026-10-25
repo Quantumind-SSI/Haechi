@@ -180,9 +180,25 @@ pdftotext -layout dev-docs/brand/<document>.pdf brand-assets/spec/<document>.txt
 `brand-assets/` is git-ignored. It is entirely derived from the committed PDFs
 and the committed SVG, so it is regenerated rather than stored.
 
-## Keeping this honest
+## Motion
 
-The core palette is a copy of the implementation, so it can drift. If
-`website/styles.css` changes, update this file in the same change. Anything
-here that is not in the stylesheet is either the reserved extended palette or a
-withdrawn value, and both are labelled as such.
+Motion reinforces Haechi's engineering restraint: fast, restrained, and fail-closed in UX. All animations must respect `prefers-reduced-motion`.
+
+| Token | Value | Use |
+|-------|-------|-----|
+| duration.instant | 0ms | Disabled states, immediate feedback |
+| duration.fast | 150ms | Micro-interactions, hover |
+| duration.base | 250ms | Standard transitions |
+| duration.medium | 350ms | Reveals, tab switches |
+| duration.slow | 500ms | Hero entrance |
+| duration.slower | 750ms | Page-level emphasis |
+| easing.standard | cubic-bezier(0.22,1,0.36,1) | Default enter/exit |
+| easing.entrance | cubic-bezier(0.16,1,0.3,1) | Reveal stagger |
+| easing.exit | cubic-bezier(0.4,0,1,1) | Hide |
+| easing.emphasis | cubic-bezier(0.2,0.8,0.2,1) | Spring emphasis |
+| spring.stiffness | 260 | Motion spring stiffness |
+| spring.damping | 22 | Motion spring damping |
+| spring.mass | 1 | Motion spring mass |
+| stagger | 80ms | Reveal stagger interval |
+
+All motion is driven by the brand tokens above; JavaScript animations use Motion tokens, CSS transitions use the duration and easing values.
