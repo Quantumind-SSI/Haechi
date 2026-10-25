@@ -5,10 +5,13 @@
   "scripts": {
     "audit": "npm audit --audit-level=high && npm --prefix website audit --audit-level=high",
     "build": "npm --prefix website run build",
-    "format": "prettier --write \"*.{json,md,yml,yaml}\" \".github/**/*.{md,yml,yaml}\" \"dev-docs/**/*.md\" \"website/**/*.{css,html,js,json,md,mjs}\"",
-    "format:check": "prettier --check \"*.{json,md,yml,yaml}\" \".github/**/*.{md,yml,yaml}\" \"dev-docs/**/*.md\" \"website/**/*.{css,html,js,json,md,mjs}\"",
+    "brand:posts": "node brand/render.mjs",
+    "brand:audit": "node brand/render.mjs --audit",
+    "brand:test": "node --test brand/render.test.mjs",
+    "format": "prettier --write \"*.{json,md,yml,yaml}\" \".github/**/*.{md,yml,yaml}\" \"brand/**/*.{md,mjs}\" \"dev-docs/**/*.md\" \"website/**/*.{css,html,js,json,md,mjs}\"",
+    "format:check": "prettier --check \"*.{json,md,yml,yaml}\" \".github/**/*.{md,yml,yaml}\" \"brand/**/*.{md,mjs}\" \"dev-docs/**/*.md\" \"website/**/*.{css,html,js,json,md,mjs}\"",
     "lint": "npm run format:check",
-    "test": "npm --prefix website test"
+    "test": "npm --prefix website test && npm run brand:test"
   },
   "devDependencies": {
     "prettier": "3.9.6"

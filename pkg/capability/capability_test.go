@@ -2,6 +2,7 @@ package capability
 
 import (
 	"bytes"
+	"context"
 	"testing"
 )
 
@@ -48,7 +49,7 @@ func TestHappyPathAdmission(t *testing.T) {
 	tok := mint(t, is, attrs)
 
 	v := verifierFor(is, "eu-standard", []string{"general"}, []uint64{42})
-	got, err := v.Verify(tok)
+	got, err := v.Verify(context.Background(), tok)
 	if err != nil {
 		t.Fatalf("valid capability denied: %v", err)
 	}
@@ -64,7 +65,7 @@ func TestWrongAudienceDenied(t *testing.T) {
 	// Present an EU token to a US gateway. The US verifier does not trust the
 	// EU key at all -> unknown key. Even if it did, audience would mismatch.
 	v := verifierFor(is, "us-standard", []string{"general"}, []uint64{42})
-	if _, err := v.Verify(tok); err == nil {
+	if _, err := v.Verify(context.Background(), tok); err == nil {
 		t.Fatal("token accepted at wrong-audience gateway")
 	}
 }
@@ -74,7 +75,7 @@ func TestExpiredEpochDenied(t *testing.T) {
 	tok := mint(t, is, Attributes{Audience: "eu-standard", ServiceClass: "general", Epoch: 41})
 
 	v := verifierFor(is, "eu-standard", []string{"general"}, []uint64{42, 43}) // 41 no longer valid
-	if _, err := v.Verify(tok); err != ErrEpochExpired && err != ErrUnknownKey {
+	if _, err := v.Verify(context.Background(), tok); err != ErrEpochExpired && err != ErrUnknownKey {
 		t.Fatalf("expired epoch not denied: %v", err)
 	}
 }
@@ -86,7 +87,7 @@ func TestServiceClassNotAllowedDenied(t *testing.T) {
 	// Gateway serves only "general".
 	v := NewVerifier("eu-standard", []string{"general"}, []uint64{42},
 		directoryKeys(is), NewMemoryReplayCache())
-	if _, err := v.Verify(tok); err != ErrServiceClassNotAllowed {
+	if _, err := v.Verify(context.Background(), tok); err != ErrServiceClassNotAllowed {
 		t.Fatalf("want ErrServiceClassNotAllowed, got %v", err)
 	}
 }
@@ -97,7 +98,7 @@ func TestTamperedSignatureDenied(t *testing.T) {
 	tok.Sig[0] ^= 0xFF // flip a bit
 
 	v := verifierFor(is, "eu-standard", []string{"general"}, []uint64{42})
-	if _, err := v.Verify(tok); err != ErrBadSignature {
+	if _, err := v.Verify(context.Background(), tok); err != ErrBadSignature {
 		t.Fatalf("want ErrBadSignature, got %v", err)
 	}
 }
@@ -108,7 +109,7 @@ func TestTamperedNonceDenied(t *testing.T) {
 	tok.Nonce[0] ^= 0x01
 
 	v := verifierFor(is, "eu-standard", []string{"general"}, []uint64{42})
-	if _, err := v.Verify(tok); err != ErrBadSignature {
+	if _, err := v.Verify(context.Background(), tok); err != ErrBadSignature {
 		t.Fatalf("want ErrBadSignature, got %v", err)
 	}
 }
@@ -118,23 +119,23 @@ func TestReplayDenied(t *testing.T) {
 	tok := mint(t, is, Attributes{Audience: "eu-standard", ServiceClass: "general", Epoch: 42})
 
 	v := verifierFor(is, "eu-standard", []string{"general"}, []uint64{42})
-	if _, err := v.Verify(tok); err != nil {
+	if _, err := v.Verify(context.Background(), tok); err != nil {
 		t.Fatalf("first use denied: %v", err)
 	}
-	if _, err := v.Verify(tok); err != ErrReplay {
+	if _, err := v.Verify(context.Background(), tok); err != ErrReplay {
 		t.Fatalf("want ErrReplay on second use, got %v", err)
 	}
 }
 
 func TestReplayCacheFailsClosedAtCapacity(t *testing.T) {
-	cache := &MemoryReplayCache{seen: map[string]struct{}{}, max: 1}
-	if err := cache.Spend(42, []byte("first")); err != nil {
+	cache := &MemoryReplayCache{seen: map[uint64]map[string]struct{}{}, max: 1}
+	if err := cache.Spend(context.Background(), 42, []byte("first")); err != nil {
 		t.Fatalf("first spend: %v", err)
 	}
-	if err := cache.Spend(42, []byte("second")); err != ErrReplayCacheFull {
+	if err := cache.Spend(context.Background(), 42, []byte("second")); err != ErrReplayCacheFull {
 		t.Fatalf("want ErrReplayCacheFull, got %v", err)
 	}
-	if err := cache.Spend(42, []byte("first")); err != ErrReplay {
+	if err := cache.Spend(context.Background(), 42, []byte("first")); err != ErrReplay {
 		t.Fatalf("want ErrReplay, got %v", err)
 	}
 }
@@ -145,7 +146,7 @@ func TestUnknownKeyDenied(t *testing.T) {
 	tok.KeyID = "not-a-real-key-id"
 
 	v := verifierFor(is, "eu-standard", []string{"general"}, []uint64{42})
-	if _, err := v.Verify(tok); err != ErrUnknownKey {
+	if _, err := v.Verify(context.Background(), tok); err != ErrUnknownKey {
 		t.Fatalf("want ErrUnknownKey, got %v", err)
 	}
 }
@@ -188,10 +189,10 @@ func TestUnlinkabilityDistinctTokens(t *testing.T) {
 		t.Fatal("two issuances produced identical nonces")
 	}
 	v := verifierFor(is, "eu-standard", []string{"general"}, []uint64{42})
-	if _, err := v.Verify(t1); err != nil {
+	if _, err := v.Verify(context.Background(), t1); err != nil {
 		t.Fatalf("t1 denied: %v", err)
 	}
-	if _, err := v.Verify(t2); err != nil {
+	if _, err := v.Verify(context.Background(), t2); err != nil {
 		t.Fatalf("t2 denied: %v", err)
 	}
 }

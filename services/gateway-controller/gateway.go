@@ -6,6 +6,7 @@
 package gatewayctl
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -43,11 +44,15 @@ func New(gatewayID, audience string, verifier *capability.Verifier, limiter Limi
 
 // Admit verifies a capability token and applies abuse control. On success it
 // returns the coarse attributes the gateway may act on. Fail closed otherwise.
-func (c *Controller) Admit(tok *capability.Token) (capability.Attributes, error) {
+//
+// The context bounds the replay check inside verification, which is the only
+// step that may reach a shared store. A cancelled or timed-out context denies
+// admission, because the gateway cannot prove the token is unspent.
+func (c *Controller) Admit(ctx context.Context, tok *capability.Token) (capability.Attributes, error) {
 	if c.verifier == nil {
 		return capability.Attributes{}, ErrVerifierUnavailable
 	}
-	attrs, err := c.verifier.Verify(tok)
+	attrs, err := c.verifier.Verify(ctx, tok)
 	if err != nil {
 		return capability.Attributes{}, err
 	}

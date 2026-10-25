@@ -72,7 +72,8 @@ export const RULES = Object.freeze([
   },
   {
     id: "claim/zero-knowledge",
-    pattern: /\bzero[- ]knowledge\b|\bZKO\b|\bzero[- ]knowledge\s+orchestration\b/gi,
+    pattern:
+      /\bzero[- ]knowledge\b|\bZKO\b|\bzero[- ]knowledge\s+orchestration\b/gi,
     severity: "fail",
     reason: "No production zero-knowledge claim is permitted before ADR-010.",
     citation: ADR4,
@@ -264,9 +265,13 @@ export function lintColours(html, where) {
   /** @type {Finding[]} */
   const findings = [];
   for (const hex of WITHDRAWN_COLOURS) {
-    const short = hex.length === 7 && hex[1] === hex[2] && hex[3] === hex[4] && hex[5] === hex[6]
-      ? `#${hex[1]}${hex[3]}${hex[5]}`
-      : hex;
+    const short =
+      hex.length === 7 &&
+      hex[1] === hex[2] &&
+      hex[3] === hex[4] &&
+      hex[5] === hex[6]
+        ? `#${hex[1]}${hex[3]}${hex[5]}`
+        : hex;
     const pattern = new RegExp(`${hex}\\b|${short}\\b`, "gi");
     let hit = pattern.exec(withoutMark);
     while (hit !== null) {

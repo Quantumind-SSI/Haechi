@@ -2,28 +2,34 @@
 /**
  * Render every Haechi visual post to PNG.
  *
- * Pipeline: post data -> claim gate -> HTML document -> Chrome headless
- * screenshot -> PNG dimension check -> manifest.
+ * Pipeline: post data -> claim gate -> HTML document -> one Chrome session ->
+ * layout measurement -> PNG capture -> dimension check -> manifest.
  *
- * The claim gate runs before anything is written. A post containing a
- * prohibited marketing claim, a withdrawn palette colour, or an em dash aborts
- * the whole run rather than producing an asset somebody might publish.
+ * Two properties matter more than speed here.
+ *
+ * The claim gate runs before Chrome starts. A post containing a prohibited
+ * marketing claim, a withdrawn palette colour, or an em dash aborts the whole
+ * run rather than producing an asset somebody might publish.
+ *
+ * Layout is measured on the same page load that produces the screenshot, so
+ * "it fits" is a measurement of the delivered pixels rather than of a separate
+ * and possibly divergent render.
  *
  * Usage:
  *   node brand/render.mjs [--out=DIR] [--only=ID] [--canvas=KEY]
  *                         [--scale=N] [--keep-html] [--audit] [--list]
  *
- * Exit codes: 0 success, 1 gate or render failure, 2 bad arguments.
+ * Exit codes: 0 success, 1 gate, layout or render failure, 2 bad arguments.
  */
 
 import { createHash } from "node:crypto";
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { CANVASES, CANVAS_KEYS, canvasByKey } from "./canvases.mjs";
+import { launch } from "./cdp.mjs";
 import {
   assertClean,
   formatFindings,
@@ -38,16 +44,6 @@ const REPO = path.resolve(HERE, "..");
 const DEFAULT_OUT = path.join(REPO, "brand-assets", "posts");
 const FONT_DIR = path.join(HERE, "fonts");
 
-/** Chrome must finish within this many milliseconds per screenshot. */
-const CHROME_TIMEOUT_MS = 60_000;
-/**
- * Virtual time the audit harness is allowed to advance while its iframes load.
- *
- * Used only by `audit()`. It is deliberately absent from `shoot()`: combining
- * `--virtual-time-budget` with `--screenshot` makes Chrome hang indefinitely,
- * because virtual time never reaches the budget while a capture is pending.
- */
-const VIRTUAL_TIME_MS = 4_000;
 /** Upper bound on renders in one run, so a bad plan cannot spin forever. */
 const MAX_RENDERS = 500;
 
@@ -63,6 +59,16 @@ const CHROME_CANDIDATES = Object.freeze([
   "/snap/bin/chromium",
 ]);
 
+/** Expression evaluated in each page to read the probe attributes. */
+const PROBE_EXPRESSION = `(function(){
+  var e = document.documentElement;
+  return {
+    overflow: e.getAttribute('data-overflow'),
+    headroom: Number(e.getAttribute('data-headroom')),
+    font: e.getAttribute('data-font')
+  };
+})()`;
+
 /**
  * Locate a Chrome-family browser.
  *
@@ -73,7 +79,9 @@ function findChrome() {
   const override = process.env.CHROME;
   if (typeof override === "string" && override.length > 0) {
     if (!fs.existsSync(override)) {
-      throw new Error(`CHROME is set to '${override}' but that path does not exist`);
+      throw new Error(
+        `CHROME is set to '${override}' but that path does not exist`,
+      );
     }
     return override;
   }
@@ -97,17 +105,19 @@ const FONT_FORMATS = Object.freeze({
 /**
  * Guess a weight from an Inter filename such as `Inter-SemiBold.woff2`.
  *
+ * Ordered so `SemiBold` and `ExtraBold` are matched before plain `Bold`.
+ *
  * @param {string} name File name.
  * @returns {number} A CSS font weight.
  */
-function weightFromName(name) {
+export function weightFromName(name) {
   const table = [
     [/thin/i, 100],
-    [/extralight|extra-light/i, 200],
+    [/extra-?light/i, 200],
     [/light/i, 300],
     [/medium/i, 500],
-    [/semibold|semi-bold/i, 600],
-    [/extrabold|extra-bold/i, 800],
+    [/semi-?bold/i, 600],
+    [/extra-?bold/i, 800],
     [/black|heavy/i, 900],
     [/bold/i, 700],
   ];
@@ -117,13 +127,13 @@ function weightFromName(name) {
 
 /**
  * Build `@font-face` rules from any font files in `brand/fonts/`, embedded as
- * data URIs so a render never touches the filesystem or network at load time.
+ * data URIs so a render never touches the network at load time.
  *
  * Returns an empty string when the directory is absent or holds no supported
  * files, which is the current state of the repository: no font files ship, so
  * renders fall back to the platform UI face. Dropping Inter into that
  * directory makes every subsequent render match the brand specification with
- * no code change.
+ * no code change, and the probe reports which face was actually used.
  *
  * Complexity: O(total bytes of font files).
  *
@@ -150,9 +160,12 @@ function loadFontFaces() {
  * @returns {{w: number, h: number}}
  * @throws {Error} If the buffer is not a PNG.
  */
-function pngSize(buffer) {
+export function pngSize(buffer) {
   const SIGNATURE = "89504e470d0a1a0a";
-  if (buffer.length < 24 || buffer.subarray(0, 8).toString("hex") !== SIGNATURE) {
+  if (
+    buffer.length < 24 ||
+    buffer.subarray(0, 8).toString("hex") !== SIGNATURE
+  ) {
     throw new Error("not a PNG file");
   }
   return { w: buffer.readUInt32BE(16), h: buffer.readUInt32BE(20) };
@@ -166,8 +179,9 @@ function pngSize(buffer) {
  * @returns {Array<{name: string, post: object, canvas: object, slide?: number, slideCount?: number}>}
  * @throws {Error} If the plan exceeds {@link MAX_RENDERS}.
  */
-function buildPlan(filters) {
-  const posts = filters.only === null ? POSTS : [POSTS.find((p) => p.id === filters.only)];
+export function buildPlan(filters) {
+  const posts =
+    filters.only === null ? POSTS : [POSTS.find((p) => p.id === filters.only)];
   const canvases =
     filters.canvas === null ? CANVASES : [canvasByKey(filters.canvas)];
   /** @type {Array<{name: string, post: object, canvas: object, slide?: number, slideCount?: number}>} */
@@ -192,7 +206,9 @@ function buildPlan(filters) {
     }
   }
   if (plan.length > MAX_RENDERS) {
-    throw new Error(`plan of ${plan.length} renders exceeds the ${MAX_RENDERS} limit`);
+    throw new Error(
+      `plan of ${plan.length} renders exceeds the ${MAX_RENDERS} limit`,
+    );
   }
   return plan;
 }
@@ -204,7 +220,7 @@ function buildPlan(filters) {
  * @returns {import("./claims.mjs").Finding[]} Warnings. Failures throw.
  * @throws {Error} On any `fail` finding.
  */
-function gate(documents) {
+export function gate(documents) {
   const seen = new Set();
   /** @type {import("./claims.mjs").Finding[]} */
   const findings = [];
@@ -219,126 +235,114 @@ function gate(documents) {
 }
 
 /**
- * Capture one document with Chrome.
+ * Generate HTML for every entry in the plan.
  *
- * @param {string} chrome Executable path.
- * @param {{htmlPath: string, pngPath: string, w: number, h: number, scale: number}} job
- * @returns {void}
- * @throws {Error} If Chrome fails, times out, or the PNG is the wrong size.
+ * @param {ReturnType<typeof buildPlan>} plan
+ * @param {string} fontCss
+ * @returns {Array<{name: string, post: object, canvas: object, html: string}>}
  */
-function shoot(chrome, job) {
-  const result = spawnSync(
-    chrome,
-    [
-      "--headless",
-      "--disable-gpu",
-      "--hide-scrollbars",
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--disable-lcd-text",
-      `--force-device-scale-factor=${job.scale}`,
-      `--window-size=${job.w},${job.h}`,
-      `--screenshot=${job.pngPath}`,
-      `file://${job.htmlPath}`,
-    ],
-    { timeout: CHROME_TIMEOUT_MS, encoding: "utf8" },
-  );
-  if (result.error !== undefined) {
-    throw new Error(`chrome failed for ${path.basename(job.pngPath)}: ${result.error.message}`);
-  }
-  if (!fs.existsSync(job.pngPath)) {
-    throw new Error(
-      `chrome produced no file for ${path.basename(job.pngPath)}\n${result.stderr ?? ""}`,
-    );
-  }
-  const size = pngSize(fs.readFileSync(job.pngPath));
-  const want = { w: job.w * job.scale, h: job.h * job.scale };
-  if (size.w !== want.w || size.h !== want.h) {
-    throw new Error(
-      `${path.basename(job.pngPath)} is ${size.w}x${size.h}, expected ${want.w}x${want.h}`,
-    );
-  }
-}
-
-/**
- * Measure layout overflow for every document in a single Chrome run.
- *
- * Each document is loaded into an exactly-sized iframe, where the probe script
- * embedded by `templates.mjs` records whether `main` overflowed its box. One
- * browser launch covers the whole set.
- *
- * @param {string} chrome Executable path.
- * @param {Array<{name: string, html: string, canvas: {w: number, h: number}}>} documents
- * @returns {Array<{name: string, overflow: string, slack: number, font: string}>}
- * @throws {Error} If Chrome produces no parsable audit payload.
- */
-function audit(chrome, documents) {
-  const payload = documents.map((d) => ({
-    name: d.name,
-    w: d.canvas.w,
-    h: d.canvas.h,
-    html: d.html,
+export function buildDocuments(plan, fontCss) {
+  return plan.map((entry) => ({
+    name: entry.name,
+    post: entry.post,
+    canvas: entry.canvas,
+    html: renderDocument(entry.post, entry.canvas, {
+      slide: entry.slide,
+      slideCount: entry.slideCount,
+      fontCss,
+    }),
   }));
-  const page = auditPage(payload);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "haechi-brand-audit-"));
-  const file = path.join(dir, "audit.html");
-  try {
-    fs.writeFileSync(file, page, "utf8");
-    const result = spawnSync(
-      chrome,
-      [
-        "--headless",
-        "--disable-gpu",
-        "--no-first-run",
-        `--virtual-time-budget=${VIRTUAL_TIME_MS * documents.length + 10_000}`,
-        "--dump-dom",
-        `file://${file}`,
-      ],
-      { timeout: CHROME_TIMEOUT_MS * 4, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 },
-    );
-    const match = /<pre id="audit-result">([\s\S]*?)<\/pre>/.exec(result.stdout ?? "");
-    if (match === null || match[1].trim() === "") {
-      throw new Error(`audit produced no result\n${result.stderr ?? ""}`);
-    }
-    return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"));
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
 }
 
 /**
- * Build the single-page audit harness.
+ * Load one document, measure it, and optionally capture it.
  *
- * @param {Array<{name: string, w: number, h: number, html: string}>} payload
- * @returns {string} A full HTML document.
+ * @param {import("./cdp.mjs").Browser} browser
+ * @param {{name: string, post: object, canvas: object, html: string}} doc
+ * @param {{out: string, htmlDir: string, scale: number, audit: boolean}} options
+ * @returns {Promise<object>} A manifest row.
+ * @throws {Error} If the captured PNG is not the expected size.
  */
-function auditPage(payload) {
-  const data = JSON.stringify(payload).replace(/</g, "\\u003c");
-  return `<!doctype html><html><head><meta charset="utf-8"><title>audit</title></head>
-<body><pre id="audit-result"></pre>
-<script>
-const DOCS = ${data};
-(async function () {
-  const out = [];
-  for (const d of DOCS) {
-    const f = document.createElement('iframe');
-    f.setAttribute('width', d.w);
-    f.setAttribute('height', d.h);
-    f.style.cssText = 'border:0;position:absolute;left:-99999px;top:0';
-    document.body.appendChild(f);
-    await new Promise(function (resolve) { f.onload = resolve; f.srcdoc = d.html; });
-    const de = f.contentDocument.documentElement;
-    out.push({
-      name: d.name,
-      overflow: de.getAttribute('data-overflow'),
-      slack: Number(de.getAttribute('data-slack')),
-      font: de.getAttribute('data-font')
-    });
-    f.remove();
+async function renderOne(browser, doc, options) {
+  const htmlPath = path.join(options.htmlDir, `${doc.name}.html`);
+  fs.writeFileSync(htmlPath, doc.html, "utf8");
+  await browser.load(pathToFileURL(htmlPath).href, {
+    w: doc.canvas.w,
+    h: doc.canvas.h,
+    scale: options.scale,
+  });
+  const probe = await browser.evaluate(PROBE_EXPRESSION);
+  const row = {
+    name: doc.name,
+    post: doc.post.id,
+    kind: doc.post.kind,
+    canvas: doc.canvas.key,
+    width: doc.canvas.w * options.scale,
+    height: doc.canvas.h * options.scale,
+    overflow: probe.overflow !== "false",
+    headroomPx: probe.headroom,
+    font: probe.font,
+    sources: [...doc.post.sources],
+  };
+  if (options.audit) return row;
+
+  const bytes = await browser.screenshot();
+  const size = pngSize(bytes);
+  if (size.w !== row.width || size.h !== row.height) {
+    throw new Error(
+      `${doc.name}.png is ${size.w}x${size.h}, expected ${row.width}x${row.height}`,
+    );
   }
-  document.getElementById('audit-result').textContent = JSON.stringify(out);
-})();
-</script></body></html>`;
+  const pngPath = path.join(options.out, `${doc.name}.png`);
+  fs.writeFileSync(pngPath, bytes);
+  row.file = path.basename(pngPath);
+  row.bytes = bytes.length;
+  row.sha256 = createHash("sha256").update(bytes).digest("hex");
+  return row;
+}
+
+/**
+ * Drive one browser session across every document.
+ *
+ * @param {string} chrome Executable path.
+ * @param {ReturnType<typeof buildDocuments>} documents
+ * @param {{out: string, scale: number, keepHtml: boolean, audit: boolean}} options
+ * @returns {Promise<object[]>} Manifest rows in plan order.
+ */
+async function renderAll(chrome, documents, options) {
+  const profileDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "haechi-brand-chrome-"),
+  );
+  const htmlDir = options.audit
+    ? fs.mkdtempSync(path.join(os.tmpdir(), "haechi-brand-html-"))
+    : path.join(options.out, "html");
+  fs.mkdirSync(htmlDir, { recursive: true });
+  const browser = await launch(chrome, profileDir);
+  const rows = [];
+  try {
+    for (const [i, doc] of documents.entries()) {
+      const row = await renderOne(browser, doc, { ...options, htmlDir });
+      rows.push(row);
+      const detail = options.audit
+        ? `${row.overflow ? "OVERFLOW" : "fits"}  headroom ${String(row.headroomPx).padStart(5)}px`
+        : `${row.width}x${row.height}  ${(row.bytes / 1024).toFixed(0)}kB`;
+      process.stdout.write(
+        `  [${String(i + 1).padStart(2, " ")}/${documents.length}] ${doc.name.padEnd(42)} ${detail}\n`,
+      );
+    }
+  } finally {
+    // Teardown reports rather than throws, so an error from the render loop is
+    // not replaced by a cleanup error. Reporting is not optional: a browser
+    // that failed to exit is a leaked process the operator needs to know about.
+    for (const problem of await browser.close()) {
+      process.stderr.write(`brand: browser teardown: ${problem}\n`);
+    }
+    fs.rmSync(profileDir, { recursive: true, force: true });
+    if (options.audit || !options.keepHtml) {
+      fs.rmSync(htmlDir, { recursive: true, force: true });
+    }
+  }
+  return rows;
 }
 
 /**
@@ -348,7 +352,7 @@ const DOCS = ${data};
  * @returns {{out: string, only: string | null, canvas: string | null, scale: number, keepHtml: boolean, audit: boolean, list: boolean}}
  * @throws {Error} On an unknown flag or an invalid value.
  */
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const options = {
     out: DEFAULT_OUT,
     only: null,
@@ -359,7 +363,9 @@ function parseArgs(argv) {
     list: false,
   };
   for (const arg of argv) {
-    const [flag, value] = arg.includes("=") ? arg.split(/=(.*)/s, 2) : [arg, ""];
+    const [flag, value] = arg.includes("=")
+      ? arg.split(/=(.*)/s, 2)
+      : [arg, ""];
     if (flag === "--out") options.out = path.resolve(value);
     else if (flag === "--only") options.only = value;
     else if (flag === "--canvas") options.canvas = value;
@@ -375,75 +381,14 @@ function parseArgs(argv) {
   if (options.canvas !== null && !CANVAS_KEYS.includes(options.canvas)) {
     throw new Error(`--canvas must be one of: ${CANVAS_KEYS.join(", ")}`);
   }
-  if (!Number.isInteger(options.scale) || options.scale < 1 || options.scale > 4) {
+  if (
+    !Number.isInteger(options.scale) ||
+    options.scale < 1 ||
+    options.scale > 4
+  ) {
     throw new Error("--scale must be an integer between 1 and 4");
   }
   return options;
-}
-
-/**
- * Generate HTML for every entry in the plan.
- *
- * @param {ReturnType<typeof buildPlan>} plan
- * @param {string} fontCss
- * @returns {Array<{name: string, post: object, canvas: object, html: string}>}
- */
-function buildDocuments(plan, fontCss) {
-  return plan.map((entry) => ({
-    name: entry.name,
-    post: entry.post,
-    canvas: entry.canvas,
-    html: renderDocument(entry.post, entry.canvas, {
-      slide: entry.slide,
-      slideCount: entry.slideCount,
-      fontCss,
-    }),
-  }));
-}
-
-/**
- * Rasterise every document and return manifest rows.
- *
- * @param {string} chrome
- * @param {ReturnType<typeof buildDocuments>} documents
- * @param {{out: string, scale: number, keepHtml: boolean}} options
- * @returns {Array<{name: string, file: string, width: number, height: number, bytes: number, sha256: string, post: string, kind: string, canvas: string, sources: string[]}>}
- */
-function rasterise(chrome, documents, options) {
-  const htmlDir = path.join(options.out, "html");
-  fs.mkdirSync(htmlDir, { recursive: true });
-  const rows = [];
-  for (const [i, doc] of documents.entries()) {
-    const htmlPath = path.join(htmlDir, `${doc.name}.html`);
-    const pngPath = path.join(options.out, `${doc.name}.png`);
-    fs.writeFileSync(htmlPath, doc.html, "utf8");
-    shoot(chrome, {
-      htmlPath,
-      pngPath,
-      w: doc.canvas.w,
-      h: doc.canvas.h,
-      scale: options.scale,
-    });
-    const bytes = fs.readFileSync(pngPath);
-    const size = pngSize(bytes);
-    rows.push({
-      name: doc.name,
-      file: path.basename(pngPath),
-      width: size.w,
-      height: size.h,
-      bytes: bytes.length,
-      sha256: createHash("sha256").update(bytes).digest("hex"),
-      post: doc.post.id,
-      kind: doc.post.kind,
-      canvas: doc.canvas.key,
-      sources: [...doc.post.sources],
-    });
-    process.stdout.write(
-      `  [${String(i + 1).padStart(2, " ")}/${documents.length}] ${doc.name}.png  ${size.w}x${size.h}  ${(bytes.length / 1024).toFixed(0)}kB\n`,
-    );
-  }
-  if (!options.keepHtml) fs.rmSync(htmlDir, { recursive: true, force: true });
-  return rows;
 }
 
 /**
@@ -462,35 +407,52 @@ function printPlan(plan) {
 }
 
 /**
- * Report overflow findings and fail if any document does not fit its canvas.
+ * Fail the run if any document did not fit its canvas.
  *
- * @param {Array<{name: string, overflow: string, slack: number, font: string}>} results
+ * @param {object[]} rows Manifest rows.
  * @returns {void}
- * @throws {Error} If any document overflows.
+ * @throws {Error} If any row overflowed.
  */
-function reportAudit(results) {
-  const bad = results.filter((r) => r.overflow !== "false");
-  const fonts = [...new Set(results.map((r) => r.font))];
-  for (const row of results) {
-    const state = row.overflow === "false" ? "fits" : "OVERFLOW";
-    process.stdout.write(
-      `  ${row.name.padEnd(44)} ${state.padEnd(9)} slack ${String(row.slack).padStart(5)}px\n`,
-    );
-  }
-  process.stdout.write(`\n  resolved font family: ${fonts.join(", ")}\n`);
-  if (bad.length > 0) {
-    throw new Error(
-      `${bad.length} document(s) overflow their canvas:\n  ${bad.map((b) => b.name).join("\n  ")}`,
-    );
-  }
+function assertNoOverflow(rows) {
+  const bad = rows.filter((r) => r.overflow);
+  if (bad.length === 0) return;
+  throw new Error(
+    `${bad.length} document(s) overflow their canvas:\n  ${bad
+      .map((b) => `${b.name} by ${Math.abs(b.headroomPx)}px`)
+      .join("\n  ")}`,
+  );
+}
+
+/**
+ * Write the manifest beside the assets.
+ *
+ * @param {string} out Output directory.
+ * @param {object[]} rows Manifest rows.
+ * @param {{scale: number}} options
+ * @returns {void}
+ */
+function writeManifest(out, rows, options) {
+  const manifest = {
+    generated: new Date().toISOString(),
+    generator: "brand/render.mjs",
+    scale: options.scale,
+    font: [...new Set(rows.map((r) => r.font))].join(", "),
+    note: "Derived output. Regenerate with 'npm run brand:posts'.",
+    assets: rows,
+  };
+  fs.writeFileSync(
+    path.join(out, "manifest.json"),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    "utf8",
+  );
 }
 
 /**
  * Entry point.
  *
- * @returns {number} Process exit code.
+ * @returns {Promise<number>} Process exit code.
  */
-function main() {
+async function main() {
   let options;
   try {
     options = parseArgs(process.argv.slice(2));
@@ -509,12 +471,12 @@ function main() {
     const fonts = loadFontFaces();
     const documents = buildDocuments(plan, fonts.css);
     const warnings = gate(documents);
+    const postCount = new Set(documents.map((d) => d.post.id)).size;
     process.stdout.write(
-      `claim gate passed: ${new Set(documents.map((d) => d.post.id)).size} post(s), ${documents.length} document(s)\n`,
+      `claim gate passed: ${postCount} post(s), ${documents.length} document(s)\n`,
     );
-    if (warnings.length > 0) {
+    if (warnings.length > 0)
       process.stdout.write(`\n${formatFindings(warnings)}\n\n`);
-    }
     process.stdout.write(
       fonts.files.length > 0
         ? `fonts embedded: ${fonts.files.join(", ")}\n`
@@ -522,28 +484,24 @@ function main() {
     );
 
     const chrome = findChrome();
+    if (!options.audit) fs.mkdirSync(options.out, { recursive: true });
+    process.stdout.write(
+      `\n${options.audit ? "measuring layout" : `rendering to ${options.out}`}, ${documents.length} document(s)\n`,
+    );
+    const rows = await renderAll(chrome, documents, options);
+    process.stdout.write(
+      `\nresolved font family: ${[...new Set(rows.map((r) => r.font))].join(", ")}\n`,
+    );
+    assertNoOverflow(rows);
+
     if (options.audit) {
-      process.stdout.write(`\nauditing ${documents.length} document(s)\n`);
-      reportAudit(audit(chrome, documents));
+      process.stdout.write(`${rows.length} document(s) fit their canvas.\n`);
       return 0;
     }
-
-    fs.mkdirSync(options.out, { recursive: true });
-    process.stdout.write(`\nrendering to ${options.out}\n`);
-    const rows = rasterise(chrome, documents, options);
-    const manifest = {
-      generated: new Date().toISOString(),
-      generator: "brand/render.mjs",
-      scale: options.scale,
-      note: "Derived output. Regenerate with 'npm run brand:posts'.",
-      assets: rows,
-    };
-    fs.writeFileSync(
-      path.join(options.out, "manifest.json"),
-      `${JSON.stringify(manifest, null, 2)}\n`,
-      "utf8",
+    writeManifest(options.out, rows, options);
+    process.stdout.write(
+      `${rows.length} asset(s) written, manifest.json updated.\n`,
     );
-    process.stdout.write(`\n${rows.length} asset(s) written, manifest.json updated.\n`);
     return 0;
   } catch (error) {
     process.stderr.write(`\n${error.message}\n`);
@@ -551,4 +509,21 @@ function main() {
   }
 }
 
-process.exitCode = main();
+/**
+ * Whether this module was started directly rather than imported.
+ *
+ * Without this guard, importing the helpers above for a test would run a full
+ * render as a side effect. Compared as file URLs rather than paths so symlinks
+ * and Windows separators do not defeat it.
+ *
+ * @returns {boolean}
+ */
+function isEntryPoint() {
+  const entry = process.argv[1];
+  if (typeof entry !== "string" || entry.length === 0) return false;
+  return pathToFileURL(entry).href === import.meta.url;
+}
+
+if (isEntryPoint()) {
+  process.exitCode = await main();
+}

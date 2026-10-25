@@ -5,7 +5,7 @@ This directory is the single entry point for Haechi documentation. Every standal
 Repository: <https://github.com/QuantmindSSI/Haechi>
 Maintainer: Quantumind SSI
 Collaboration: Quantumind SSI and Haechi Internet Security Services
-Index updated: 2026-08-28
+Index updated: 2026-08-30
 
 ## How To Read This Set
 
@@ -21,33 +21,36 @@ The controlling statement of what actually works is [`engineering/readiness.md`]
 
 ## Engineering Documentation
 
-| Document                                                                                   | Authority     | Purpose                                                                         |
-| ------------------------------------------------------------------------------------------ | ------------- | ------------------------------------------------------------------------------- |
-| [`engineering/readiness.md`](engineering/readiness.md)                                     | Authoritative | Component status, enforced repository gates, and production release blockers    |
-| [`architecture/overview.md`](architecture/overview.md)                                     | Authoritative | Ports and adapters map, trust zones, upstream integration table                 |
-| [`threat-model/telemetry-prohibition-list.md`](threat-model/telemetry-prohibition-list.md) | Authoritative | Fields that must never cross the telemetry boundary, enforced by `services/gim` |
-| [`adr/README.md`](adr/README.md)                                                           | Authoritative | Architecture decision register                                                  |
-| [`operations/deployment.md`](operations/deployment.md)                                     | Authoritative | Website deployment runbook for Cloudflare Pages and Azure Container Apps        |
-| [`operations/email-routing.md`](operations/email-routing.md)                               | Authoritative | Email Routing configuration for haechi.co.uk and the anti-spoofing records      |
+| Document                                                                                   | Authority     | Purpose                                                                                  |
+| ------------------------------------------------------------------------------------------ | ------------- | ---------------------------------------------------------------------------------------- |
+| [`engineering/readiness.md`](engineering/readiness.md)                                     | Authoritative | Component status, enforced repository gates, and production release blockers             |
+| [`architecture/overview.md`](architecture/overview.md)                                     | Authoritative | Ports and adapters map, trust zones, upstream integration table                          |
+| [`threat-model/telemetry-prohibition-list.md`](threat-model/telemetry-prohibition-list.md) | Authoritative | Fields that must never cross the telemetry boundary, enforced by `services/gim`          |
+| [`adr/README.md`](adr/README.md)                                                           | Authoritative | Architecture decision register                                                           |
+| [`operations/deployment.md`](operations/deployment.md)                                     | Authoritative | Website deployment runbook for Cloudflare Pages and Azure Container Apps                 |
+| [`operations/email-routing.md`](operations/email-routing.md)                               | Authoritative | Email Routing configuration for haechi.co.uk and the anti-spoofing records               |
+| [`operations/platform-staging.md`](operations/platform-staging.md)                         | Authoritative | Control-plane platform staging environment in Azure: topology, provisioning, limitations |
 
 ### Architecture Decision Records
 
 ADRs are immutable once accepted. Supersede rather than edit.
 
-| ADR                                              | Title                                                           | Status                                               |
-| ------------------------------------------------ | --------------------------------------------------------------- | ---------------------------------------------------- |
-| [ADR-001](adr/adr-001-naming.md)                 | Canonical product and component naming                          | Accepted                                             |
-| ADR-002                                          | NetBird integration versus maintained fork                      | Proposed, not written                                |
-| [ADR-003](adr/adr-003-endpoint-language.md)      | Endpoint language, process boundary and privileged helper model | Accepted                                             |
-| [ADR-004](adr/adr-004-capability-trust-model.md) | Enterprise identity and privacy-capability trust model          | Accepted                                             |
-| [ADR-005](adr/adr-005-pq-reinforcement.md)       | WireGuard post-quantum reinforcement and downgrade policy       | Accepted                                             |
-| ADR-006                                          | Direct and protected transport interface                        | Proposed, not written                                |
-| ADR-007                                          | Telemetry prohibition list and GIM data contract                | Accepted, recorded in `threat-model/`                |
-| ADR-008                                          | SaaS, dedicated and disconnected deployment boundaries          | Proposed, not written                                |
-| ADR-009                                          | Dependency pinning, fork and upstream contribution policy       | Accepted, recorded in `../third_party/manifest.yaml` |
-| ADR-010                                          | Release evidence and permitted security claims                  | Proposed, not written                                |
+| ADR                                                 | Title                                                           | Status                                               |
+| --------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------- |
+| [ADR-001](adr/adr-001-naming.md)                    | Canonical product and component naming                          | Accepted                                             |
+| ADR-002                                             | NetBird integration versus maintained fork                      | Proposed, not written                                |
+| [ADR-003](adr/adr-003-endpoint-language.md)         | Endpoint language, process boundary and privileged helper model | Accepted                                             |
+| [ADR-004](adr/adr-004-capability-trust-model.md)    | Enterprise identity and privacy-capability trust model          | Accepted                                             |
+| [ADR-005](adr/adr-005-pq-reinforcement.md)          | WireGuard post-quantum reinforcement and downgrade policy       | Accepted                                             |
+| ADR-006                                             | Direct and protected transport interface                        | Proposed, not written                                |
+| ADR-007                                             | Telemetry prohibition list and GIM data contract                | Accepted, recorded in `threat-model/`                |
+| ADR-008                                             | SaaS, dedicated and disconnected deployment boundaries          | Proposed, not written                                |
+| ADR-009                                             | Dependency pinning, fork and upstream contribution policy       | Accepted, recorded in `../third_party/manifest.yaml` |
+| ADR-010                                             | Release evidence and permitted security claims                  | Proposed, not written                                |
+| [ADR-011](adr/adr-011-control-plane-persistence.md) | Control-plane persistence and the PostgreSQL driver exception   | Accepted                                             |
+| [ADR-012](adr/adr-012-retire-sentinel-names.md)     | Retirement of the Sentinel product names                        | Accepted, supersedes part of ADR-001                 |
 
-Five of the ten registered ADRs have no document. ADR-004 and ADR-010 are the two whose absence carries the most risk, because they govern cryptographic design and the claims the company is permitted to make.
+Four of the twelve registered ADRs have no document. ADR-004 and ADR-010 are the two whose absence carries the most risk, because they govern cryptographic design and the claims the company is permitted to make.
 
 ## Integration Documentation
 
@@ -57,6 +60,8 @@ Five of the ten registered ADRs have no document. ADR-004 and ADR-010 are the tw
 | [`integration/haechi-integration-document.docx`](integration/haechi-integration-document.docx) | Engineering input | Same content in editable form                                                                                      |
 
 Go source comments cite this document by section, for example `§6.2` in `services/control-api`. It describes the target design. It is not evidence of implementation.
+
+Amended 2026-08-30: Appendix A now records the ADR-001 naming decision rather than leaving it open, and no longer names "Quantumind Ltd" as the company. Both formats carry the same text; they must be edited together.
 
 ## Product And Planning Documentation
 
@@ -73,14 +78,30 @@ The executive summary and the early product specification describe capabilities 
 
 These documents are retained for historical and internal context. They must not be issued to customers, investors, or partners as descriptions of current capability until the corresponding release gates pass and ADR-010 defines permitted claims.
 
+### Naming Correction Notice
+
+[ADR-012](adr/adr-012-retire-sentinel-names.md) retires "Quantumind Sentinel" and "Q-Sentinel", closing a conditional that [ADR-001](adr/adr-001-naming.md) left open. The product is **Haechi**, a collaborative product of **Quantumind SSI** and **Haechi Internet Security Services**. Two historical documents still carry the retired names throughout, because they were written before either decision:
+
+| Document                            | Retired names                                                                        |
+| ----------------------------------- | ------------------------------------------------------------------------------------ |
+| `product/haechi-vpn-software.pdf`   | Titled "Quantumind Sentinel: Technical Implementation and Integration Plan". 18 uses |
+| `product/haechi-research-plan.docx` | Titled "QUANTUMIND SENTINEL". 25 uses                                                |
+
+Read every occurrence as Haechi. The Sentinel-era layer names in those documents (COL, DPCO, QSVG, ZKO) are retired with them; the current five layers are the endpoint agent, privacy-separated access, the control plane, the regional data plane, and the Global Intelligence Mesh. See [`architecture/overview.md`](architecture/overview.md). ZKO must not be reintroduced: ADR-004 prohibits any zero-knowledge claim before ADR-010 and external cryptographic review.
+
+They are not rewritten, for three reasons. A historical record that is edited stops being evidence of what was believed and when. The convention below stores binary formats as delivered. Most importantly, correcting only the names would leave the prohibited capability claims intact while making the documents look current, which is more dangerous than leaving them visibly dated.
+
+Live documents carry no retired names. The integration document's Appendix A was corrected on 2026-08-30 and now records the ADR-001 decision directly.
+
 ## Brand Documentation
 
-| Document                                                                                                                                 | Authority             | Purpose                                                                        |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------ |
-| [`brand/brand-specification.md`](brand/brand-specification.md)                                                                           | Authoritative         | Palette, typography, logo rules and voice. The single source of truth          |
-| [`brand/haechi-brand-designer-guidelines.pdf`](brand/haechi-brand-designer-guidelines.pdf)                                               | Superseded 2026-08-30 | Original guidelines. Palette withdrawn in favour of the shipped implementation |
-| [`brand/haechi-product-branding-and-creative-direction.pdf`](brand/haechi-product-branding-and-creative-direction.pdf)                   | Superseded 2026-08-30 | Creative direction. Teal removed, purple and navy retained as reserved         |
-| [`brand/haechi-product-branding-and-creative-direction-document.pdf`](brand/haechi-product-branding-and-creative-direction-document.pdf) | Superseded 2026-08-30 | Shorter variant of the above                                                   |
+| Document                                                                                                                                 | Authority             | Purpose                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------- |
+| [`brand/brand-specification.md`](brand/brand-specification.md)                                                                           | Authoritative         | Palette, typography, logo rules and voice. The single source of truth            |
+| [`brand/visual-content-specification.md`](brand/visual-content-specification.md)                                                         | Authoritative         | Canvases, templates and enforced claim rules for educational and marketing posts |
+| [`brand/haechi-brand-designer-guidelines.pdf`](brand/haechi-brand-designer-guidelines.pdf)                                               | Superseded 2026-08-30 | Original guidelines. Palette withdrawn in favour of the shipped implementation   |
+| [`brand/haechi-product-branding-and-creative-direction.pdf`](brand/haechi-product-branding-and-creative-direction.pdf)                   | Superseded 2026-08-30 | Creative direction. Teal removed, purple and navy retained as reserved           |
+| [`brand/haechi-product-branding-and-creative-direction-document.pdf`](brand/haechi-product-branding-and-creative-direction-document.pdf) | Superseded 2026-08-30 | Shorter variant of the above                                                     |
 
 The three PDFs disagreed with each other and with the shipped product. They are
 retained for history only. Work from `brand-specification.md`.

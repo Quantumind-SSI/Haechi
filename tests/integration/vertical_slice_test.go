@@ -164,7 +164,7 @@ func (s *slice) admit(tok *capability.Token, gw model.RouteGateway) error {
 	v := capverifier.FromDirectory(audience, []string{serviceClass},
 		epoch.Window(time.Now()), s.issuer.Directory(), capability.NewMemoryReplayCache())
 	gc := gatewayctl.New(gw.GatewayID, audience, v, gatewayctl.NewEpochBudget(100))
-	if _, err := gc.Admit(tok); err != nil {
+	if _, err := gc.Admit(context.Background(), tok); err != nil {
 		return err
 	}
 	return nil

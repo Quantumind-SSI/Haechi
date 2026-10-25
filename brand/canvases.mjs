@@ -69,7 +69,7 @@ export const CANVASES = Object.freeze([
     w: 1080,
     h: 1350,
     mode: "tall",
-    density: 1.02,
+    density: 1.12,
     label: "LinkedIn portrait and carousel",
   }),
 ]);

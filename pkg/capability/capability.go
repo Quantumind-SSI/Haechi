@@ -1,6 +1,7 @@
 package capability
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -22,6 +23,7 @@ var (
 	ErrReplayCacheFull        = errors.New("capability: replay cache capacity exhausted")
 	ErrNoKeyForAttributes     = errors.New("capability: no signing key for attributes")
 	ErrFinalizeCheck          = errors.New("capability: finalized signature failed self-check")
+	ErrNonceLength            = errors.New("capability: nonce is empty or longer than MaxNonceLen")
 )
 
 // Attributes are the coarse, low-cardinality bindings of a capability. They are
@@ -203,12 +205,41 @@ func (b *Blinding) Finalize(blindSig []byte) (*Token, error) {
 // Verifier (gateway side)
 // -------------------------------------------------------------------------
 
+// MaxNonceLen bounds the nonce a replay store is asked to record.
+//
+// Prepare issues 32-byte nonces and a longer one cannot carry a valid
+// signature, so this is defence in depth rather than the primary control. It
+// exists so that a store backed by durable media can never be asked to write an
+// unbounded value on behalf of a remote party.
+const MaxNonceLen = 64
+
 // ReplayCache records spent tokens to enforce single use within an epoch.
+//
+// Release-1 gateways run as more than one process, so a process-local cache
+// admits the same token once per process. An implementation must therefore be
+// atomic across every verifier sharing an epoch, and must survive a restart.
 type ReplayCache interface {
 	// Spend atomically records (epoch, nonce). It returns ErrReplay when the
 	// token was already spent and must return an error when durability cannot be
 	// guaranteed. Verifiers deny admission for every error.
-	Spend(epoch uint64, nonce []byte) error
+	//
+	// The context carries the admission deadline. An implementation that talks
+	// to a remote store must honour it and must treat cancellation as a failure
+	// to record, never as a successful spend.
+	Spend(ctx context.Context, epoch uint64, nonce []byte) error
+}
+
+// ReplayPurger releases records for epochs that can no longer be presented.
+//
+// A verifier accepts only the epochs in its window, so a record older than the
+// oldest accepted epoch can never authorise anything again. Purging is separate
+// from Spend because it is an operator or scheduler concern, not part of
+// admission, and because a store whose retention is handled by the medium
+// itself does not need to implement it.
+type ReplayPurger interface {
+	// PurgeBefore deletes every record for an epoch strictly below the given
+	// epoch and reports how many were removed.
+	PurgeBefore(ctx context.Context, epoch uint64) (int64, error)
 }
 
 // VerifierKey is a trusted issuer key and its authenticated attributes.
@@ -251,7 +282,10 @@ func NewVerifier(audience string, serviceClasses []string, validEpochs []uint64,
 
 // Verify admits or denies a token. On success it returns the authenticated
 // attributes. Every failure denies (fail closed).
-func (v *Verifier) Verify(tok *Token) (Attributes, error) {
+//
+// The context bounds the replay check, which is the only step that may touch a
+// remote store. Every other step is local and constant work.
+func (v *Verifier) Verify(ctx context.Context, tok *Token) (Attributes, error) {
 	if tok == nil {
 		return Attributes{}, ErrBadSignature
 	}
@@ -272,36 +306,80 @@ func (v *Verifier) Verify(tok *Token) (Attributes, error) {
 		return Attributes{}, ErrBadSignature
 	}
 	// Replay check LAST so an invalid token never consumes cache space.
-	if err := v.replay.Spend(vk.Attrs.Epoch, tok.Nonce); err != nil {
+	if err := v.replay.Spend(ctx, vk.Attrs.Epoch, tok.Nonce); err != nil {
 		return Attributes{}, err
 	}
 	return vk.Attrs, nil
 }
 
-// MemoryReplayCache is a bounded in-memory double-spend cache. Production uses a
-// shared store (e.g. Redis/NATS KV) partitioned per epoch with TTL = epoch life.
+// MemoryReplayCache is a bounded in-memory double-spend cache.
+//
+// It is correct only for a single process and does not survive a restart, so it
+// is the development adapter. Any deployment running more than one verifier for
+// an audience must use a shared store; see adapters/postgres.ReplayStore.
 type MemoryReplayCache struct {
 	mu   sync.Mutex
-	seen map[string]struct{}
+	seen map[uint64]map[string]struct{}
+	n    int
 	max  int
 }
 
+var (
+	_ ReplayCache  = (*MemoryReplayCache)(nil)
+	_ ReplayPurger = (*MemoryReplayCache)(nil)
+)
+
 // NewMemoryReplayCache returns a cache bounded to a default capacity.
 func NewMemoryReplayCache() *MemoryReplayCache {
-	return &MemoryReplayCache{seen: map[string]struct{}{}, max: 1 << 20}
+	return &MemoryReplayCache{seen: map[uint64]map[string]struct{}{}, max: 1 << 20}
 }
 
 // Spend records a token exactly once and fails closed when capacity is reached.
-func (m *MemoryReplayCache) Spend(epoch uint64, nonce []byte) error {
-	key := fmt.Sprintf("%d/%s", epoch, base64.RawURLEncoding.EncodeToString(nonce))
+//
+// Records are grouped by epoch so PurgeBefore is a map delete per epoch rather
+// than a scan of every record.
+func (m *MemoryReplayCache) Spend(ctx context.Context, epoch uint64, nonce []byte) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if len(nonce) == 0 || len(nonce) > MaxNonceLen {
+		return ErrNonceLength
+	}
+	key := base64.RawURLEncoding.EncodeToString(nonce)
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.seen[key]; ok {
+	if _, ok := m.seen[epoch][key]; ok {
 		return ErrReplay
 	}
-	if len(m.seen) >= m.max {
+	if m.n >= m.max {
 		return ErrReplayCacheFull
 	}
-	m.seen[key] = struct{}{}
+	if m.seen[epoch] == nil {
+		m.seen[epoch] = map[string]struct{}{}
+	}
+	m.seen[epoch][key] = struct{}{}
+	m.n++
 	return nil
+}
+
+// PurgeBefore drops every record for an epoch below the given epoch.
+//
+// Complexity: O(number of distinct epochs held), which the verifier window
+// keeps small.
+func (m *MemoryReplayCache) PurgeBefore(ctx context.Context, epoch uint64) (int64, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var removed int64
+	for e, records := range m.seen {
+		if e >= epoch {
+			continue
+		}
+		removed += int64(len(records))
+		m.n -= len(records)
+		delete(m.seen, e)
+	}
+	return removed, nil
 }

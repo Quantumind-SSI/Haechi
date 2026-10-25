@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "_comment": [
+    "Non-secret parameters for the Haechi platform staging environment.",
+    "Secrets are supplied by deploy-platform.sh from the environment and are",
+    "deliberately absent here: this file is committed.",
+    "",
+    "Region is UK West, not UK South. The subscription permits one Container",
+    "Apps managed environment per region and the website production stack",
+    "already holds UK South. UK West keeps data in the United Kingdom while",
+    "keeping staging isolated from production, which sharing the production",
+    "environment would not."
+  ],
+  "parameters": {
+    "environmentName": {
+      "value": "staging"
+    },
+    "location": {
+      "value": "ukwest"
+    },
+    "databaseLocation": {
+      "value": "uksouth"
+    },
+    "databaseAdministratorLogin": {
+      "value": "haechiadmin"
+    },
+    "databaseSkuName": {
+      "value": "Standard_B1ms"
+    },
+    "databaseTier": {
+      "value": "Burstable"
+    },
+    "backupRetentionDays": {
+      "value": 7
+    },
+    "platformMinReplicas": {
+      "value": 1
+    },
+    "controlApiMinReplicas": {
+      "value": 0
+    }
+  }
+}

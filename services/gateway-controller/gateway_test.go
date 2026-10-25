@@ -1,13 +1,16 @@
 package gatewayctl
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestNilLimiterDefaultsToDenyAll(t *testing.T) {
 	controller := New("gw-1", "eu-standard", nil, nil)
 	if controller.limiter.Allow(42) {
 		t.Fatal("missing limiter must deny admission")
 	}
-	if _, err := controller.Admit(nil); err != ErrVerifierUnavailable {
+	if _, err := controller.Admit(context.Background(), nil); err != ErrVerifierUnavailable {
 		t.Fatalf("missing verifier error = %v, want ErrVerifierUnavailable", err)
 	}
 }

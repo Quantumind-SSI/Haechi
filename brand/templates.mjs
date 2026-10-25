@@ -95,8 +95,8 @@ body{font-family:${FONT_STACK};-webkit-font-smoothing:antialiased;text-rendering
   background-size:calc(64px * var(--k)) calc(64px * var(--k));
   -webkit-mask-image:linear-gradient(to bottom,var(--c-black),transparent 88%)}
 .glow{position:absolute;width:calc(620px * var(--k));height:calc(620px * var(--k));
-  right:calc(-280px * var(--k));top:calc(60px * var(--k));border:var(--sp-hairline) solid rgba(255,69,0,.2);
-  border-radius:50%;box-shadow:0 0 calc(140px * var(--k)) rgba(255,69,0,.12)}
+  right:calc(-330px * var(--k));top:calc(-90px * var(--k));border:var(--sp-hairline) solid rgba(255,69,0,.14);
+  border-radius:50%;box-shadow:0 0 calc(160px * var(--k)) rgba(255,69,0,.1)}
 .content{position:relative;display:flex;flex-direction:column;height:100%;padding:var(--sp-pad)}
 header,footer{display:flex;align-items:center;justify-content:space-between;flex:0 0 auto}
 .brand{display:flex;align-items:center;gap:calc(var(--sp-gap) * .48)}
@@ -181,6 +181,15 @@ const TEMPLATE_CSS = `
 .slide-index{font-size:var(--fs-micro);letter-spacing:var(--tr-micro);color:var(--c-tertiary);text-transform:uppercase}
 .swipe{display:flex;align-items:center;gap:calc(var(--sp-gap) * .4);font-size:var(--fs-micro);
   letter-spacing:var(--tr-micro);text-transform:uppercase;color:var(--c-accentText)}
+.layermap{display:flex;align-items:center;gap:calc(var(--sp-gap) * .34)}
+.layermap span{font-size:var(--fs-micro);font-weight:600;letter-spacing:var(--tr-micro);color:var(--c-tertiary);
+  border:var(--sp-hairline) solid var(--c-line);border-radius:var(--sp-radius);
+  padding:calc(var(--sp-gap) * .26) calc(var(--sp-gap) * .46)}
+.layermap span.on{color:var(--c-white);border-color:var(--c-accent);background:var(--c-accentSoft)}
+.layermap i{flex:1 1 auto;height:var(--sp-hairline);background:var(--c-line)}
+.slide{display:flex;flex-direction:column;gap:var(--sp-gapLarge);justify-content:center;height:100%}
+.slide h1{font-size:var(--fs-display);line-height:var(--lh-display);letter-spacing:var(--tr-display)}
+.slide .spacer{flex:0 1 auto;min-height:0}
 `;
 
 /**
@@ -249,7 +258,18 @@ const PROBE_SCRIPT = `
   var over=m.scrollHeight>m.clientHeight+1||c.scrollHeight>c.clientHeight+1;
   var e=document.documentElement;
   e.setAttribute('data-overflow',over?'true':'false');
-  e.setAttribute('data-slack',String(m.clientHeight-m.scrollHeight));
+  // scrollHeight is clamped at clientHeight, so it can prove overflow but never
+  // measures spare room. The union of the children's boxes can do both, and it
+  // is template independent: some layouts wrap everything in one element and
+  // some place several siblings directly in main.
+  var top=Infinity, bottom=-Infinity;
+  for(var i=0;i<m.children.length;i++){
+    var r=m.children[i].getBoundingClientRect();
+    if(r.height===0&&r.width===0) continue;
+    top=Math.min(top,r.top); bottom=Math.max(bottom,r.bottom);
+  }
+  var used=bottom>top?Math.ceil(bottom-top):m.scrollHeight;
+  e.setAttribute('data-headroom',String(m.clientHeight-used));
   e.setAttribute('data-font',resolves('Inter')?'Inter':'platform-fallback');
 })();
 </script>`;
@@ -288,10 +308,15 @@ function headBlock(post, canvas) {
  * @returns {string}
  */
 function renderCards(post, canvas) {
-  assert.ok(Array.isArray(post.cards), `${post.id}: cards template needs cards`);
+  assert.ok(
+    Array.isArray(post.cards),
+    `${post.id}: cards template needs cards`,
+  );
   const cards = post.cards
     .map(
-      (c) => `<article class="card"><span class="label">${escapeHtml(c.label)}</span>
+      (
+        c,
+      ) => `<article class="card"><span class="label">${escapeHtml(c.label)}</span>
 <h2>${escapeHtml(c.title)}</h2><p>${escapeHtml(c.body)}</p>
 <span class="note">${escapeHtml(c.note)}</span></article>`,
     )
@@ -347,7 +372,9 @@ function renderStatement(post, canvas) {
   const steps = Array.isArray(post.points)
     ? `<div class="steps">${post.points
         .map(
-          (p) => `<div class="step"><span class="label">${escapeHtml(p.label)}</span>
+          (
+            p,
+          ) => `<div class="step"><span class="label">${escapeHtml(p.label)}</span>
 <h2>${escapeHtml(p.title)}</h2><p>${escapeHtml(p.body)}</p></div>`,
         )
         .join("")}</div>`
@@ -387,6 +414,24 @@ export function renderBody(post, canvas) {
 }
 
 /**
+ * Progress strip for the carousel: one chip per layer joined by rules, with
+ * the current layer lit. It mirrors the `.layer-map` element on the shipped
+ * site, tells a reader where they are in the sequence, and gives the tall
+ * portrait canvas something to do with its lower third.
+ *
+ * @param {import("./posts.mjs").Post} post
+ * @param {number} active Zero-based index of the current layer, or -1 on the cover.
+ * @returns {string}
+ */
+function layerMap(post, active) {
+  const chips = post.rows.map((row, i) => {
+    const chip = `<span${i === active ? ' class="on"' : ""}>${escapeHtml(row.label)}</span>`;
+    return i < post.rows.length - 1 ? `${chip}<i></i>` : chip;
+  });
+  return `<div class="layermap">${chips.join("")}</div>`;
+}
+
+/**
  * Body for one carousel slide. Slide 0 is the cover; slides 1..n are one row
  * each, expanded with the supporting points that the single-image layouts have
  * no room for.
@@ -403,17 +448,19 @@ export function renderSlideBody(post, slide) {
     `${post.id}: slide ${slide} out of range`,
   );
   if (slide === 0) {
-    return `<div class="statement"><div class="headblock">
+    return `<div class="slide"><div class="headblock">
 <p class="eyebrow">${escapeHtml(post.eyebrow)}</p><h1>${headlineHtml(post.headline)}</h1>
 <p class="lede">${escapeHtml(post.lede)}</p></div>
-<div class="swipe">Swipe through the five layers <span>&#8594;</span></div></div>`;
+<div class="swipe">Swipe through the five layers <span>&#8594;</span></div>
+${layerMap(post, -1)}</div>`;
   }
   const row = post.rows[slide - 1];
   const items = row.points.map((p) => `<li>${escapeHtml(p)}</li>`).join("");
-  return `<div class="statement"><div class="headblock">
+  return `<div class="slide"><div class="headblock">
 <p class="eyebrow">Layer ${escapeHtml(row.label)}</p><h1>${escapeHtml(row.title)}</h1>
 <p class="lede">${escapeHtml(row.body)}</p></div>
-<section class="panel positive"><span class="label">In this layer</span><ul>${items}</ul></section></div>`;
+<section class="panel positive"><span class="label">In this layer</span><ul>${items}</ul></section>
+${layerMap(post, slide - 1)}</div>`;
 }
 
 /**

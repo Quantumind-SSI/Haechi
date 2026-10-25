@@ -1,6 +1,6 @@
 # Engineering Readiness
 
-Snapshot date: 2026-08-28
+Snapshot date: 2026-08-30
 
 ## Current Classification
 
@@ -10,17 +10,17 @@ The website and local development services are executable. The control-plane, en
 
 ## Component Status
 
-| Component                    | State                        | Evidence                                                                                                                                         |
-| ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Website                      | Deployable, not yet deployed | 18 tests in CI including the PostgreSQL adapter against a real database; Bicep compiles and workflows lint, but no deployment has run end to end |
-| Control API                  | Development only             | Runtime rejects non-development environments and requires bearer authentication                                                                  |
-| PostgreSQL adapter           | Disconnected                 | Schema and adapter exist, but no production composition root opens the database                                                                  |
-| Identity and policy adapters | Partial                      | Keycloak, OPA, and OpenBao adapters have isolated tests; no deployed end-to-end identity flow exists                                             |
-| Endpoint agent               | Simulated                    | Signed artifact binding and fail-closed tunnel lifecycle are tested against a loopback tunnel                                                    |
-| Gateway data plane           | Simulated                    | Capability admission exists; WireGuard peer programming and controlled egress do not                                                             |
-| Capability protocol          | Research implementation      | Current blind RSA code is not the RFC 9474 construction selected by ADR-004                                                                      |
-| Post-quantum reinforcement   | Simulated                    | No Rosenpass process integration or interoperability evidence exists                                                                             |
-| Telemetry boundary           | Prototype                    | Whole-event rejection and typed value validation are tested; an executable export pipeline is absent                                             |
+| Component                    | State                   | Evidence                                                                                                                                         |
+| ---------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Website                      | Deployed to production  | 18 tests in CI including the PostgreSQL adapter against a real database; Bicep compiles and workflows lint, but no deployment has run end to end |
+| Control API                  | Development only        | Runtime rejects non-development environments and requires bearer authentication                                                                  |
+| PostgreSQL adapter           | Disconnected            | Schema and adapter exist, but no production composition root opens the database                                                                  |
+| Identity and policy adapters | Partial                 | Keycloak, OPA, and OpenBao adapters have isolated tests; no deployed end-to-end identity flow exists                                             |
+| Endpoint agent               | Simulated               | Signed artifact binding and fail-closed tunnel lifecycle are tested against a loopback tunnel                                                    |
+| Gateway data plane           | Simulated               | Capability admission and a shared, durable replay store exist; WireGuard peer programming and controlled egress do not                           |
+| Capability protocol          | Research implementation | Current blind RSA code is not the RFC 9474 construction selected by ADR-004                                                                      |
+| Post-quantum reinforcement   | Simulated               | No Rosenpass process integration or interoperability evidence exists                                                                             |
+| Telemetry boundary           | Prototype               | Whole-event rejection and typed value validation are tested; an executable export pipeline is absent                                             |
 
 ## Enforced Repository Gates
 
@@ -39,7 +39,7 @@ The website and local development services are executable. The control-plane, en
 2. Define and enforce the administrator, device, and gateway authorization matrix. Add mutually authenticated service transport and bind device revocation to entitlement issuance.
 3. Implement a real platform tunnel adapter and privileged helper. Prove firewall kill-switch behavior, DNS protection, reconnect teardown, route cleanup, and gateway failover on every supported operating system.
 4. Replace the custom blind RSA construction with the reviewed RFC 9474 design selected by ADR-004. Add published vectors, key rotation, external cryptographic review, and a signed verifier directory.
-5. Replace process-local replay state with an atomic shared store that fails closed, expires by epoch, and survives gateway restarts.
+5. ~~Replace process-local replay state with an atomic shared store that fails closed, expires by epoch, and survives gateway restarts.~~ The shared store exists: `adapters/postgres.ReplayStore` makes a capability single-use across processes through an `(epoch, nonce)` primary key, survives restarts, and expires by epoch via `PurgeBefore`. Twelve integration tests prove single use across independent connections, survival of a simulated restart, fail-closed behaviour on cancellation and deadline, and rejection of an unrepresentable epoch. Still outstanding within this item: no executable selects it, because the gateway has no entry point until blocker 6; and a scheduler must call `PurgeBefore` with the oldest accepted epoch, which belongs with that entry point.
 6. Add executable service entry points and authenticated transports for entitlement, capability issuance, routing, gateway admission, and telemetry.
 7. Add integration environments that exercise PostgreSQL, Keycloak, OPA, OpenBao, NATS, and the selected data-plane components together.
 8. Complete operational controls for metrics, alerting, audit records, incident response, data retention, disaster recovery, release signing, and rollback.
