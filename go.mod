@@ -21,7 +21,7 @@ go 1.26
 // OpenBao, NATS, ClickHouse, ...) are consumed as external services or pinned
 // binaries per third_party/manifest.yaml, NOT vendored into this module.
 
-require github.com/jackc/pgx/v5 v5.10.0
+require github.com/jackc/pgx/v5 v5.11.0
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
