@@ -18,3 +18,7 @@ runtime/
 # Derived brand reference renders and text extracts.
 # Regenerate with the commands in dev-docs/brand/brand-specification.md
 brand-assets/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
